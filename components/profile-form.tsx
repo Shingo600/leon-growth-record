@@ -60,7 +60,7 @@ export function ProfileForm() {
         <label className="label" htmlFor="profile-birthday">誕生日</label>
         <input
           id="profile-birthday"
-          className="input"
+          className="input date-input"
           type="date"
           value={form.birthday}
           onChange={(event) => setForm((current) => ({ ...current, birthday: event.target.value }))}
@@ -86,7 +86,7 @@ export function ProfileForm() {
         <label className="label" htmlFor="profile-arrival-date">お迎え日</label>
         <input
           id="profile-arrival-date"
-          className="input"
+          className="input date-input"
           type="date"
           value={form.arrivalDate}
           onChange={(event) => setForm((current) => ({ ...current, arrivalDate: event.target.value }))}
