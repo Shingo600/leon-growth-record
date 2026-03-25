@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-cream text-ink;
+  background-image:
+    radial-gradient(circle at top, rgba(201, 139, 97, 0.12), transparent 32%),
+    linear-gradient(180deg, #fbf8f3 0%, #f7f2ea 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(111, 125, 91, 0.25);
+  border-radius: 999px;
+}
+
+.card {
+  @apply rounded-4xl border border-white/70 bg-white/90 shadow-card backdrop-blur;
+}
+
+.input {
+  @apply w-full rounded-2xl border border-sand bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-warm focus:ring-2 focus:ring-warm/15;
+}
+
+.label {
+  @apply mb-2 block text-sm font-medium text-ink/80;
+}
+
+.button-primary {
+  @apply inline-flex items-center justify-center rounded-2xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-ink/90 active:scale-[0.99];
+}
+
+.button-secondary {
+  @apply inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-ink ring-1 ring-sand transition hover:bg-sand/30;
+}
