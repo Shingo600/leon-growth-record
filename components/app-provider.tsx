@@ -4,12 +4,24 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { defaultAppData } from "@/lib/dummy-data";
 import { loadAppData, saveAppData } from "@/lib/storage";
-import { AppData, CalendarEvent, DogProfile, GrowthRecord, HealthRecord } from "@/lib/types";
-import { createId, sortEvents, sortHealthRecords, sortRecords } from "@/lib/utils";
+import {
+  ActivityRecord,
+  AppData,
+  CalendarEvent,
+  DogProfile,
+  ExpenseRecord,
+  GrowthRecord,
+  HealthRecord,
+  MealRecord
+} from "@/lib/types";
+import { createId, sortActivityRecords, sortEvents, sortExpenseRecords, sortHealthRecords, sortMealRecords, sortRecords } from "@/lib/utils";
 
 type RecordInput = Omit<GrowthRecord, "id" | "createdAt">;
 type EventInput = Omit<CalendarEvent, "id" | "createdAt">;
 type HealthRecordInput = Omit<HealthRecord, "id" | "createdAt">;
+type ActivityRecordInput = Omit<ActivityRecord, "id" | "createdAt">;
+type MealRecordInput = Omit<MealRecord, "id" | "createdAt">;
+type ExpenseRecordInput = Omit<ExpenseRecord, "id" | "createdAt">;
 
 type AppContextValue = {
   data: AppData;
@@ -26,6 +38,9 @@ type AppContextValue = {
   addHealthRecord: (record: HealthRecordInput) => void;
   updateHealthRecord: (id: string, record: HealthRecordInput) => void;
   deleteHealthRecord: (id: string) => void;
+  addActivityRecord: (record: ActivityRecordInput) => void;
+  addMealRecord: (record: MealRecordInput) => void;
+  addExpenseRecord: (record: ExpenseRecordInput) => void;
 };
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -39,7 +54,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ...defaultAppData,
     records: sortRecords(defaultAppData.records),
     events: sortEvents(defaultAppData.events),
-    healthRecords: sortHealthRecords(defaultAppData.healthRecords)
+    healthRecords: sortHealthRecords(defaultAppData.healthRecords),
+    activityRecords: sortActivityRecords(defaultAppData.activityRecords),
+    mealRecords: sortMealRecords(defaultAppData.mealRecords),
+    foodItems: defaultAppData.foodItems,
+    expenseRecords: sortExpenseRecords(defaultAppData.expenseRecords)
   }));
   const [isReady, setIsReady] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -199,6 +218,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setData((current) => ({
           ...current,
           healthRecords: sortHealthRecords(current.healthRecords.filter((item) => item.id !== id))
+        }));
+      },
+      addActivityRecord(record) {
+        setData((current) => ({
+          ...current,
+          activityRecords: sortActivityRecords([
+            {
+              ...record,
+              id: createId("activity"),
+              createdAt: new Date().toISOString()
+            },
+            ...current.activityRecords
+          ])
+        }));
+      },
+      addMealRecord(record) {
+        setData((current) => ({
+          ...current,
+          mealRecords: sortMealRecords([
+            {
+              ...record,
+              id: createId("meal"),
+              createdAt: new Date().toISOString()
+            },
+            ...current.mealRecords
+          ])
+        }));
+      },
+      addExpenseRecord(record) {
+        setData((current) => ({
+          ...current,
+          expenseRecords: sortExpenseRecords([
+            {
+              ...record,
+              id: createId("expense"),
+              createdAt: new Date().toISOString()
+            },
+            ...current.expenseRecords
+          ])
         }));
       }
     }),

@@ -132,7 +132,7 @@ export function RecordForm({
         <label className="label" htmlFor="record-date">日付</label>
         <input
           id="record-date"
-          className="input"
+          className="input date-input"
           type="date"
           value={form.date}
           onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
@@ -141,7 +141,7 @@ export function RecordForm({
       </div>
 
       <div>
-        <label className="label" htmlFor="record-weight">体重 (taijyuu)</label>
+        <label className="label" htmlFor="record-weight">体重</label>
         <input
           id="record-weight"
           className="input"

@@ -13,6 +13,7 @@ const navItems = [
   { href: "/records", label: "記録一覧" },
   { href: "/calendar", label: "カレンダー" },
   { href: "/health", label: "健康" },
+  { href: "/expenses", label: "費用" },
   { href: "/profile", label: "プロフィール" }
 ];
 
@@ -40,14 +41,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : null}
       <main>{children}</main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md items-center justify-around rounded-t-4xl border border-white/80 bg-white/95 px-2 py-4 shadow-[0_-12px_30px_-20px_rgba(47,42,37,0.35)] backdrop-blur">
+      <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md items-center justify-around rounded-t-4xl border border-white/80 bg-white/95 px-1 py-4 shadow-[0_-12px_30px_-20px_rgba(47,42,37,0.35)] backdrop-blur">
         {navItems.map((item) => {
           const active = pathname === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`rounded-2xl px-2 py-2 text-xs font-medium transition ${
+              className={`rounded-2xl px-1.5 py-2 text-[11px] font-medium transition ${
                 active ? "bg-ink text-white" : "text-ink/70 hover:bg-sand/30"
               }`}
             >

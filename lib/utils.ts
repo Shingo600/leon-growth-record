@@ -1,4 +1,16 @@
-import { CalendarEvent, EventType, GraphRange, GrowthRecord, HealthRecord, HealthRecordType } from "@/lib/types";
+import {
+  ActivityRecord,
+  CalendarEvent,
+  EventType,
+  ExpenseCategory,
+  ExpenseRecord,
+  FoodItem,
+  GraphRange,
+  GrowthRecord,
+  HealthRecord,
+  HealthRecordType,
+  MealRecord
+} from "@/lib/types";
 
 export function toDateKey(date: Date) {
   const year = date.getFullYear();
@@ -15,6 +27,33 @@ export function formatDate(date: string, options?: Intl.DateTimeFormatOptions) {
       day: "numeric"
     }
   ).format(new Date(date));
+}
+
+export function getAgeText(birthday: string) {
+  const birthDate = new Date(`${birthday}T00:00:00`);
+  const today = new Date();
+
+  if (Number.isNaN(birthDate.getTime())) {
+    return "";
+  }
+
+  let years = today.getFullYear() - birthDate.getFullYear();
+  let months = today.getMonth() - birthDate.getMonth();
+
+  if (today.getDate() < birthDate.getDate()) {
+    months -= 1;
+  }
+
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  if (years <= 0) {
+    return `${Math.max(months, 0)}か月`;
+  }
+
+  return `${years}歳${months > 0 ? ` ${months}か月` : ""}`;
 }
 
 export function formatDateTime(date: string, time?: string) {
@@ -51,6 +90,18 @@ export function sortHealthRecords(records: HealthRecord[]) {
   return [...records].sort((a, b) => b.date.localeCompare(a.date));
 }
 
+export function sortActivityRecords(records: ActivityRecord[]) {
+  return [...records].sort((a, b) => `${b.date} ${b.startTime}`.localeCompare(`${a.date} ${a.startTime}`));
+}
+
+export function sortMealRecords(records: MealRecord[]) {
+  return [...records].sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+}
+
+export function sortExpenseRecords(records: ExpenseRecord[]) {
+  return [...records].sort((a, b) => b.date.localeCompare(a.date));
+}
+
 export function getTodayDateString() {
   return toDateKey(new Date());
 }
@@ -58,6 +109,28 @@ export function getTodayDateString() {
 export function getUpcomingEvents(events: CalendarEvent[]) {
   const today = getTodayDateString();
   return sortEvents(events).filter((event) => event.date >= today);
+}
+
+export function findFoodItem(foodItems: FoodItem[], foodItemId: string) {
+  return foodItems.find((item) => item.id === foodItemId);
+}
+
+export function sumByCategory(expenseRecords: ExpenseRecord[]) {
+  return expenseRecords.reduce<Record<ExpenseCategory, number>>(
+    (totals, record) => ({
+      ...totals,
+      [record.category]: totals[record.category] + record.amount
+    }),
+    {
+      フード: 0,
+      病院: 0,
+      トリミング: 0,
+      消耗品: 0,
+      おもちゃ: 0,
+      保険: 0,
+      その他: 0
+    }
+  );
 }
 
 export function getPendingReminderEvents(
