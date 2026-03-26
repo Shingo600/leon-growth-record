@@ -10,11 +10,20 @@ import {
   CalendarEvent,
   DogProfile,
   ExpenseRecord,
+  FoodItem,
   GrowthRecord,
   HealthRecord,
   MealRecord
 } from "@/lib/types";
-import { createId, sortActivityRecords, sortEvents, sortExpenseRecords, sortHealthRecords, sortMealRecords, sortRecords } from "@/lib/utils";
+import {
+  createId,
+  sortActivityRecords,
+  sortEvents,
+  sortExpenseRecords,
+  sortHealthRecords,
+  sortMealRecords,
+  sortRecords
+} from "@/lib/utils";
 
 type RecordInput = Omit<GrowthRecord, "id" | "createdAt">;
 type EventInput = Omit<CalendarEvent, "id" | "createdAt">;
@@ -22,6 +31,7 @@ type HealthRecordInput = Omit<HealthRecord, "id" | "createdAt">;
 type ActivityRecordInput = Omit<ActivityRecord, "id" | "createdAt">;
 type MealRecordInput = Omit<MealRecord, "id" | "createdAt">;
 type ExpenseRecordInput = Omit<ExpenseRecord, "id" | "createdAt">;
+type FoodItemInput = Omit<FoodItem, "id">;
 
 type AppContextValue = {
   data: AppData;
@@ -41,6 +51,9 @@ type AppContextValue = {
   addActivityRecord: (record: ActivityRecordInput) => void;
   addMealRecord: (record: MealRecordInput) => void;
   addExpenseRecord: (record: ExpenseRecordInput) => void;
+  addFoodItem: (item: FoodItemInput) => void;
+  updateFoodItem: (id: string, item: FoodItemInput) => void;
+  deleteFoodItem: (id: string) => void;
 };
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -258,9 +271,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ...current.expenseRecords
           ])
         }));
+      },
+      addFoodItem(item) {
+        setData((current) => ({
+          ...current,
+          foodItems: [
+            {
+              ...item,
+              id: createId("food")
+            },
+            ...current.foodItems
+          ]
+        }));
+      },
+      updateFoodItem(id, item) {
+        setData((current) => ({
+          ...current,
+          foodItems: current.foodItems.map((food) =>
+            food.id === id
+              ? {
+                  ...food,
+                  ...item
+                }
+              : food
+          )
+        }));
+      },
+      deleteFoodItem(id) {
+        setData((current) => ({
+          ...current,
+          foodItems: current.foodItems.filter((food) => food.id !== id),
+          mealRecords: sortMealRecords(current.mealRecords.filter((meal) => meal.foodItemId !== id))
+        }));
       }
     }),
-    [data, isReady]
+    [data, isReady, saveError]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

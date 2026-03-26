@@ -59,12 +59,7 @@ function ModalShell({
   }
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[100] bg-ink/35"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[100] bg-ink/35" role="dialog" aria-modal="true" onClick={onClose}>
       <div className="flex min-h-full items-end justify-center px-4 pb-6 pt-10 sm:items-center">
         <div
           className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-[2rem] bg-white p-5 shadow-card"
@@ -72,7 +67,7 @@ function ModalShell({
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <h3 className="text-lg font-semibold">{title}</h3>
-            <button type="button" className="button-secondary px-4 py-2" onClick={onClose}>
+            <button type="button" className="button-secondary cursor-pointer px-4 py-2" onClick={onClose}>
               閉じる
             </button>
           </div>
@@ -165,7 +160,7 @@ function ActivityModal({
           />
         </div>
 
-        <button className="button-primary w-full" type="submit">
+        <button className="button-primary w-full cursor-pointer" type="submit">
           記録する
         </button>
       </form>
@@ -273,7 +268,7 @@ function MealModal({ onClose, foodItems }: { onClose: () => void; foodItems: Foo
           />
         </div>
 
-        <button className="button-primary w-full" type="submit">
+        <button className="button-primary w-full cursor-pointer" type="submit">
           記録する
         </button>
       </form>
@@ -286,7 +281,7 @@ export function QuickAddActions({ foodItems }: { foodItems: FoodItem[] }) {
   const [activityKind, setActivityKind] = useState<ActivityKind>("散歩");
 
   return (
-    <section className="card space-y-4 p-5">
+    <section className="card relative z-10 isolate space-y-4 p-5">
       <div>
         <p className="text-sm text-ink/60">クイック入力</p>
         <h3 className="mt-1 text-xl font-semibold">すぐ記録する</h3>
@@ -295,7 +290,7 @@ export function QuickAddActions({ foodItems }: { foodItems: FoodItem[] }) {
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
-          className="button-primary w-full"
+          className="button-primary relative z-10 w-full cursor-pointer"
           onClick={() => {
             setActivityKind("散歩");
             setMode("activity");
@@ -305,7 +300,7 @@ export function QuickAddActions({ foodItems }: { foodItems: FoodItem[] }) {
         </button>
         <button
           type="button"
-          className="button-secondary w-full"
+          className="button-secondary relative z-10 w-full cursor-pointer"
           onClick={() => {
             setActivityKind("ノーズワーク");
             setMode("activity");
@@ -315,7 +310,7 @@ export function QuickAddActions({ foodItems }: { foodItems: FoodItem[] }) {
         </button>
         <button
           type="button"
-          className="button-secondary w-full"
+          className="button-secondary relative z-10 w-full cursor-pointer"
           onClick={() => {
             setActivityKind("コマンド練習");
             setMode("activity");
@@ -323,7 +318,11 @@ export function QuickAddActions({ foodItems }: { foodItems: FoodItem[] }) {
         >
           トレーニングを記録
         </button>
-        <button type="button" className="button-secondary w-full" onClick={() => setMode("meal")}>
+        <button
+          type="button"
+          className="button-secondary relative z-10 w-full cursor-pointer"
+          onClick={() => setMode("meal")}
+        >
           ごはんを記録
         </button>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { BackupManager } from "@/components/backup-manager";
+import { FoodDatabaseManager } from "@/components/food-database-manager";
 import { PageHeader } from "@/components/page-header";
 import { ProfileForm } from "@/components/profile-form";
 import { useAppData } from "@/components/app-provider";
@@ -39,6 +40,7 @@ export default function ProfilePage() {
       </section>
 
       <ProfileForm />
+      <FoodDatabaseManager />
       <BackupManager />
     </div>
   );
