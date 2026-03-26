@@ -4,6 +4,7 @@ import { BackupManager } from "@/components/backup-manager";
 import { FoodDatabaseManager } from "@/components/food-database-manager";
 import { PageHeader } from "@/components/page-header";
 import { ProfileForm } from "@/components/profile-form";
+import { SyncStatusCard } from "@/components/sync-status-card";
 import { useAppData } from "@/components/app-provider";
 import { formatDate, getAgeText } from "@/lib/utils";
 
@@ -43,6 +44,7 @@ export default function ProfilePage() {
       </section>
 
       <ProfileForm />
+      <SyncStatusCard />
       <FoodDatabaseManager />
       <BackupManager />
     </div>

@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { defaultAppData } from "@/lib/dummy-data";
 import { loadAppData, saveAppData } from "@/lib/storage";
+import { fetchCloudAppData, isSupabaseConfigured, saveCloudAppData } from "@/lib/supabase";
 import {
   ActivityRecord,
   AppData,
@@ -32,11 +33,16 @@ type ActivityRecordInput = Omit<ActivityRecord, "id" | "createdAt">;
 type MealRecordInput = Omit<MealRecord, "id" | "createdAt">;
 type ExpenseRecordInput = Omit<ExpenseRecord, "id" | "createdAt">;
 type FoodItemInput = Omit<FoodItem, "id">;
+type StorageMode = "local" | "cloud";
+type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
 type AppContextValue = {
   data: AppData;
   isReady: boolean;
   saveError: string;
+  storageMode: StorageMode;
+  syncStatus: SyncStatus;
+  syncMessage: string;
   replaceData: (data: AppData) => void;
   updateProfile: (profile: DogProfile) => void;
   addRecord: (record: RecordInput) => void;
@@ -58,12 +64,8 @@ type AppContextValue = {
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-function getProfileWeight(records: GrowthRecord[], currentWeight: number) {
-  return records[0]?.taijyuu ?? currentWeight;
-}
-
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<AppData>(() => ({
+function getInitialData(): AppData {
+  return {
     ...defaultAppData,
     records: sortRecords(defaultAppData.records),
     events: sortEvents(defaultAppData.events),
@@ -72,32 +74,121 @@ export function AppProvider({ children }: { children: ReactNode }) {
     mealRecords: sortMealRecords(defaultAppData.mealRecords),
     foodItems: defaultAppData.foodItems,
     expenseRecords: sortExpenseRecords(defaultAppData.expenseRecords)
-  }));
+  };
+}
+
+function getProfileWeight(records: GrowthRecord[], currentWeight: number) {
+  return records[0]?.taijyuu ?? currentWeight;
+}
+
+export function AppProvider({ children }: { children: ReactNode }) {
+  const [data, setData] = useState<AppData>(getInitialData);
   const [isReady, setIsReady] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [storageMode, setStorageMode] = useState<StorageMode>("local");
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [syncMessage, setSyncMessage] = useState("この端末に保存しています。");
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
-    const saved = loadAppData();
-    if (saved) {
-      setData(saved);
+    let cancelled = false;
+
+    async function initialize() {
+      const localData = loadAppData();
+      const cloudEnabled = isSupabaseConfigured();
+
+      if (localData && !cancelled) {
+        setData(localData);
+      }
+
+      if (cloudEnabled) {
+        setStorageMode("cloud");
+        setSyncStatus("syncing");
+        setSyncMessage("クラウド同期を確認しています。");
+
+        const result = await fetchCloudAppData();
+        if (cancelled) {
+          return;
+        }
+
+        if (result.ok && result.data) {
+          setData(result.data);
+          setSyncStatus("synced");
+          setSyncMessage("Supabase と同期中です。家族の端末とも同じデータを使えます。");
+        } else if (result.ok && !result.data) {
+          setSyncStatus("idle");
+          setSyncMessage("Supabase は設定済みです。最初の保存でクラウド同期が始まります。");
+        } else {
+          setStorageMode("local");
+          setSyncStatus("error");
+          setSyncMessage("クラウド同期に失敗したため、この端末の保存に切り替えています。");
+          setSaveError(result.message);
+        }
+      } else {
+        setStorageMode("local");
+        setSyncStatus("idle");
+        setSyncMessage("この端末に保存しています。PC と携帯をそろえるにはバックアップ復元か Supabase 設定が必要です。");
+      }
+
+      if (!cancelled) {
+        hasLoadedRef.current = true;
+        setIsReady(true);
+      }
     }
-    setIsReady(true);
+
+    void initialize();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (!isReady) {
+    if (!isReady || !hasLoadedRef.current) {
       return;
     }
 
-    const result = saveAppData(data);
-    setSaveError(result.ok ? "" : result.message);
-  }, [data, isReady]);
+    const localResult = saveAppData(data);
+    setSaveError(localResult.ok ? "" : localResult.message);
+
+    if (!isSupabaseConfigured() || storageMode !== "cloud") {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function syncCloud() {
+      setSyncStatus("syncing");
+      const result = await saveCloudAppData(data);
+      if (cancelled) {
+        return;
+      }
+
+      if (result.ok) {
+        setSyncStatus("synced");
+        setSyncMessage("Supabase と同期中です。");
+      } else {
+        setSyncStatus("error");
+        setSyncMessage("Supabase への保存に失敗しました。この端末のデータは保持されています。");
+        setSaveError(result.message);
+      }
+    }
+
+    void syncCloud();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data, isReady, storageMode]);
 
   const value = useMemo<AppContextValue>(
     () => ({
       data,
       isReady,
       saveError,
+      storageMode,
+      syncStatus,
+      syncMessage,
       replaceData(nextData) {
         setData(nextData);
       },
@@ -305,7 +396,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }));
       }
     }),
-    [data, isReady, saveError]
+    [data, isReady, saveError, storageMode, syncMessage, syncStatus]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

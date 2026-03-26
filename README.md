@@ -168,3 +168,18 @@ http://192.168.0.10:3000
 - グラフ種類の追加
 - CSV / PDF 出力
 - PWA 化してホーム画面追加しやすくする
+# Supabase同期メモ
+
+PC と携帯で同じデータを使いたい場合は Supabase を設定してください。
+
+1. `.env.example` を参考に `.env.local` を作成
+2. Supabase の SQL Editor で [supabase/schema.sql](C:\Users\desig\OneDrive\デスクトップ\codex\leon-growth-record\supabase\schema.sql) を実行
+3. `NEXT_PUBLIC_LEON_WORKSPACE_ID` を家族で同じ値にそろえる
+
+設定前:
+- 端末ごとの `localStorage` 保存
+
+設定後:
+- Supabase に同期
+- PC と携帯で同じデータを表示
+- 将来の家族共有の土台として利用可能
