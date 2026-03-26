@@ -3,6 +3,7 @@
 import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { useAppData } from "@/components/app-provider";
+import { sampleAppData } from "@/lib/dummy-data";
 import { createBackupData, parseBackupData } from "@/lib/storage";
 
 function downloadTextFile(fileName: string, text: string) {
@@ -35,6 +36,44 @@ export function BackupManager() {
     downloadTextFile(`leon-growth-record-backup-${dateStamp}.json`, JSON.stringify(backup, null, 2));
     setError("");
     setMessage("バックアップファイルを書き出しました。");
+  }
+
+  function handleSampleLoad() {
+    if (!window.confirm("サンプルデータをこの端末に読み込みます。現在のデータは上書きされます。よろしいですか？")) {
+      return;
+    }
+
+    replaceData(sampleAppData);
+    setError("");
+    setMessage("サンプルデータを読み込みました。");
+  }
+
+  function handleReset() {
+    if (!window.confirm("この端末のデータを空の状態に戻します。よろしいですか？")) {
+      return;
+    }
+
+    replaceData({
+      ...sampleAppData,
+      profile: {
+        ...sampleAppData.profile,
+        breed: "",
+        birthday: "",
+        arrivalDate: "",
+        currentWeight: 0,
+        photoUrl: "",
+        catchPhrase: "今日もやさしく見守ろう"
+      },
+      records: [],
+      events: [],
+      healthRecords: [],
+      activityRecords: [],
+      mealRecords: [],
+      foodItems: [],
+      expenseRecords: []
+    });
+    setError("");
+    setMessage("この端末のデータを初期化しました。");
   }
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>) {
@@ -72,15 +111,20 @@ export function BackupManager() {
   return (
     <section className="card space-y-4 p-5">
       <div>
-        <h3 className="text-lg font-semibold">バックアップ</h3>
+        <h3 className="text-lg font-semibold">データ管理</h3>
         <p className="mt-1 text-sm leading-6 text-ink/60">
-          現在のプロフィール、成長記録、予定、健康履歴をJSONで書き出し、あとから復元できます。
+          このアプリは今のところ端末ごとに保存されます。PCと携帯で同じデータにしたいときは、バックアップを書き出して復元してください。
         </p>
       </div>
 
-      <button type="button" className="button-primary w-full" onClick={handleExport}>
-        バックアップを書き出す
-      </button>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button type="button" className="button-primary w-full" onClick={handleExport}>
+          バックアップを書き出す
+        </button>
+        <button type="button" className="button-secondary w-full" onClick={handleSampleLoad}>
+          サンプルデータを入れる
+        </button>
+      </div>
 
       <div>
         <label className="label" htmlFor="backup-import">バックアップを復元</label>
@@ -92,9 +136,13 @@ export function BackupManager() {
           onChange={handleImport}
         />
         <p className="mt-2 text-xs leading-5 text-ink/55">
-          復元すると現在のデータを上書きします。復元前にバックアップを書き出しておくのがおすすめです。
+          先にバックアップを書き出してから復元するのがおすすめです。
         </p>
       </div>
+
+      <button type="button" className="button-secondary w-full" onClick={handleReset}>
+        この端末のデータを初期化
+      </button>
 
       {message ? <p className="text-sm text-moss">{message}</p> : null}
       {error ? <p className="text-sm text-rose-700">{error}</p> : null}

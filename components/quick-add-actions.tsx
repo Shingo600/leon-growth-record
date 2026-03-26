@@ -170,6 +170,7 @@ function ActivityModal({
 
 function MealModal({ onClose, foodItems }: { onClose: () => void; foodItems: FoodItem[] }) {
   const { addMealRecord } = useAppData();
+  const hasFoodItems = foodItems.length > 0;
   const [form, setForm] = useState({
     mealType: "朝" as MealType,
     foodItemId: foodItems[0]?.id ?? "",
@@ -185,6 +186,9 @@ function MealModal({ onClose, foodItems }: { onClose: () => void; foodItems: Foo
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
+          if (!hasFoodItems || !form.foodItemId) {
+            return;
+          }
           addMealRecord({
             date: getTodayDateString(),
             time: form.time,
@@ -220,6 +224,11 @@ function MealModal({ onClose, foodItems }: { onClose: () => void; foodItems: Foo
             value={form.foodItemId}
             onChange={(value) => setForm((current) => ({ ...current, foodItemId: value }))}
           />
+          {!hasFoodItems ? (
+            <p className="mt-2 text-xs leading-5 text-ink/55">
+              先にプロフィール画面の「ごはんデータベース」でフードを登録してください。
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -268,7 +277,7 @@ function MealModal({ onClose, foodItems }: { onClose: () => void; foodItems: Foo
           />
         </div>
 
-        <button className="button-primary w-full cursor-pointer" type="submit">
+        <button className="button-primary w-full cursor-pointer disabled:opacity-50" type="submit" disabled={!hasFoodItems || !form.foodItemId}>
           記録する
         </button>
       </form>

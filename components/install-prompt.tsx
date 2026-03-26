@@ -52,13 +52,21 @@ export function InstallPrompt() {
     };
   }, []);
 
-  const shouldShow = useMemo(() => {
-    if (dismissed || isStandalone) {
-      return false;
+  const statusText = useMemo(() => {
+    if (isStandalone) {
+      return "ホーム画面に追加済みです。アプリのように開けます。";
     }
 
-    return Boolean(installEvent) || isIos;
-  }, [dismissed, installEvent, isIos, isStandalone]);
+    if (installEvent) {
+      return "この端末ではホーム画面に追加できます。ボタンからインストールを進めてください。";
+    }
+
+    if (isIos) {
+      return "iPhoneでは Safari の共有メニューから「ホーム画面に追加」で使えます。";
+    }
+
+    return "このブラウザでは自動のインストール案内が出ていません。Chrome 系ブラウザだと表示されやすいです。";
+  }, [installEvent, isIos, isStandalone]);
 
   async function handleInstall() {
     if (!installEvent) {
@@ -73,7 +81,7 @@ export function InstallPrompt() {
     }
   }
 
-  if (!shouldShow) {
+  if (dismissed && !installEvent && !isIos && !isStandalone) {
     return null;
   }
 
@@ -81,26 +89,24 @@ export function InstallPrompt() {
     <section className="card mb-5 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold">ホーム画面に追加</p>
-          <p className="mt-1 text-sm leading-6 text-ink/65">
-            {installEvent
-              ? "アプリのように開けるよう、ホーム画面に追加できます。"
-              : "iPhoneでは共有メニューから「ホーム画面に追加」を選ぶと使いやすくなります。"}
-          </p>
+          <p className="text-sm font-semibold">ホーム画面追加</p>
+          <p className="mt-1 text-sm leading-6 text-ink/65">{statusText}</p>
+          {isIos && !isStandalone ? (
+            <p className="mt-2 text-xs leading-5 text-ink/50">
+              Safari の共有ボタンから「ホーム画面に追加」を選んでください。
+            </p>
+          ) : null}
         </div>
-        <button
-          type="button"
-          className="button-secondary shrink-0 px-4 py-2"
-          onClick={installEvent ? handleInstall : () => setDismissed(true)}
-        >
-          {installEvent ? "追加する" : "閉じる"}
-        </button>
+        {installEvent ? (
+          <button type="button" className="button-secondary shrink-0 px-4 py-2" onClick={handleInstall}>
+            追加する
+          </button>
+        ) : (
+          <button type="button" className="button-secondary shrink-0 px-4 py-2" onClick={() => setDismissed(true)}>
+            閉じる
+          </button>
+        )}
       </div>
-      {isIos && !installEvent ? (
-        <p className="mt-3 text-xs leading-5 text-ink/50">
-          Safari の共有ボタンから「ホーム画面に追加」を選んでください。
-        </p>
-      ) : null}
     </section>
   );
 }
