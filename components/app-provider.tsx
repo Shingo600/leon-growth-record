@@ -152,8 +152,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const localResult = saveAppData(data);
-    setSaveError(localResult.ok ? "" : localResult.message);
+    const shouldSaveLocal = !isSupabaseConfigured() || storageMode === "local";
+    if (shouldSaveLocal) {
+      const localResult = saveAppData(data);
+      setSaveError(localResult.ok ? "" : localResult.message);
+    } else {
+      setSaveError("");
+    }
 
     if (!isSupabaseConfigured() || storageMode !== "cloud") {
       return;
@@ -170,6 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (result.ok) {
         setSyncStatus("synced");
+        setSaveError("");
         setSyncMessage("Supabase と同期中です。");
       } else {
         setSyncStatus("error");

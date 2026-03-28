@@ -17,7 +17,8 @@ export function CalendarMonth({
   onSelectDate: (date: string) => void;
   onSelectEvent: (event: CalendarEvent) => void;
 }) {
-  const pointerStartRef = useRef<Record<string, { x: number; y: number }>>({});
+  const touchStartRef = useRef<Record<string, { x: number; y: number; moved: boolean }>>({});
+  const suppressClickRef = useRef(false);
   const days = buildMonthMatrix(currentMonth);
 
   return (
@@ -38,24 +39,52 @@ export function CalendarMonth({
               className={`min-h-28 bg-white p-2 text-left align-top transition hover:bg-cream/30 ${
                 day.isCurrentMonth ? "" : "bg-white/55 text-ink/35"
               }`}
-              onPointerDown={(event) => {
-                pointerStartRef.current[day.key] = {
-                  x: event.clientX,
-                  y: event.clientY
+              style={{ touchAction: "pan-y" }}
+              onTouchStart={(event) => {
+                const touch = event.touches[0];
+                touchStartRef.current[day.key] = {
+                  x: touch.clientX,
+                  y: touch.clientY,
+                  moved: false
                 };
               }}
-              onPointerUp={(event) => {
-                const start = pointerStartRef.current[day.key];
+              onTouchMove={(event) => {
+                const start = touchStartRef.current[day.key];
                 if (!start) {
                   return;
                 }
 
-                const movedX = Math.abs(event.clientX - start.x);
-                const movedY = Math.abs(event.clientY - start.y);
+                const touch = event.touches[0];
+                const movedX = Math.abs(touch.clientX - start.x);
+                const movedY = Math.abs(touch.clientY - start.y);
 
-                if (movedX < 8 && movedY < 8) {
+                if (movedX > 8 || movedY > 8) {
+                  start.moved = true;
+                }
+              }}
+              onTouchEnd={() => {
+                const start = touchStartRef.current[day.key];
+                if (!start) {
+                  return;
+                }
+
+                suppressClickRef.current = true;
+                window.setTimeout(() => {
+                  suppressClickRef.current = false;
+                }, 300);
+
+                if (!start.moved) {
                   onSelectDate(day.key);
                 }
+
+                delete touchStartRef.current[day.key];
+              }}
+              onClick={() => {
+                if (suppressClickRef.current) {
+                  return;
+                }
+
+                onSelectDate(day.key);
               }}
             >
               <p className="text-xs font-semibold">{day.date.getDate()}</p>
