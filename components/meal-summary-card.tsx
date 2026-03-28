@@ -272,7 +272,6 @@ export function MealSummaryCard({
                     >
                       <p className="break-words">{detailParts.join(" ")}</p>
                       {record.memo ? <p className="mt-1 break-words text-ink/60">{record.memo}</p> : null}
-                      <p className="mt-2 text-xs text-ink/45">この枠をタップして編集・削除</p>
                     </button>
                   );
                 })}
