@@ -7,10 +7,14 @@ const weekLabels = ["日", "月", "火", "水", "木", "金", "土"];
 
 export function CalendarMonth({
   currentMonth,
-  events
+  events,
+  onSelectDate,
+  onSelectEvent
 }: {
   currentMonth: Date;
   events: CalendarEvent[];
+  onSelectDate: (date: string) => void;
+  onSelectEvent: (event: CalendarEvent) => void;
 }) {
   const days = buildMonthMatrix(currentMonth);
 
@@ -24,25 +28,52 @@ export function CalendarMonth({
 
       <div className="grid grid-cols-7 gap-px bg-sand/40">
         {days.map((day) => {
-          // 1日ごとの予定件数がすぐ分かるように、月表示でも簡易一覧を出しています。
           const dayEvents = events.filter((event) => event.date === day.key);
+
           return (
             <div
               key={day.key}
-              className={`min-h-28 bg-white p-2 ${day.isCurrentMonth ? "" : "bg-white/55 text-ink/35"}`}
+              role="button"
+              tabIndex={0}
+              className={`min-h-28 bg-white p-2 text-left align-top transition hover:bg-cream/30 ${
+                day.isCurrentMonth ? "" : "bg-white/55 text-ink/35"
+              }`}
+              onClick={() => onSelectDate(day.key)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSelectDate(day.key);
+                }
+              }}
             >
               <p className="text-xs font-semibold">{day.date.getDate()}</p>
               <div className="mt-2 space-y-1">
                 {dayEvents.slice(0, 2).map((event) => (
-                  <div
+                  <button
                     key={event.id}
-                    className={`rounded-xl px-2 py-1 text-[10px] font-medium ${getEventTypeClassName(event.type)}`}
+                    type="button"
+                    className={`block w-full rounded-xl px-2 py-1 text-left text-[10px] font-medium ${getEventTypeClassName(
+                      event.type
+                    )}`}
+                    onClick={(clickEvent) => {
+                      clickEvent.stopPropagation();
+                      onSelectEvent(event);
+                    }}
                   >
                     {event.time} {event.title}
-                  </div>
+                  </button>
                 ))}
                 {dayEvents.length > 2 ? (
-                  <div className="text-[10px] text-ink/55">+{dayEvents.length - 2}件</div>
+                  <button
+                    type="button"
+                    className="text-[10px] text-ink/55"
+                    onClick={(clickEvent) => {
+                      clickEvent.stopPropagation();
+                      onSelectEvent(dayEvents[0]);
+                    }}
+                  >
+                    +{dayEvents.length - 2}件
+                  </button>
                 ) : null}
               </div>
             </div>

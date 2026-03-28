@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import { CalendarEventModal } from "@/components/calendar-event-modal";
 import { CalendarMonth } from "@/components/calendar-month";
 import { EmptyState } from "@/components/empty-state";
 import { EventCard } from "@/components/event-card";
 import { PageHeader } from "@/components/page-header";
 import { useAppData } from "@/components/app-provider";
-import { EventType } from "@/lib/types";
+import { CalendarEvent, EventType } from "@/lib/types";
 
 const eventTypeOptions: Array<EventType | "すべて"> = ["すべて", "散歩", "病院", "薬", "シャンプー", "その他"];
 const notifyOptions = ["すべて", "通知あり", "通知なし"] as const;
@@ -17,6 +17,8 @@ export default function CalendarPage() {
   const [searchText, setSearchText] = useState("");
   const [typeFilter, setTypeFilter] = useState<EventType | "すべて">("すべて");
   const [notifyFilter, setNotifyFilter] = useState<(typeof notifyOptions)[number]>("すべて");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [month, setMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -52,7 +54,18 @@ export default function CalendarPage() {
       <PageHeader
         title="カレンダー"
         description="予定を月表示と一覧表示の両方で確認できます。"
-        action={<Link href="/events/new" className="button-primary">追加</Link>}
+        action={
+          <button
+            type="button"
+            className="button-primary"
+            onClick={() => {
+              setEditingEvent(null);
+              setSelectedDate(new Date().toISOString().slice(0, 10));
+            }}
+          >
+            追加
+          </button>
+        }
       />
 
       <div className="card flex items-center justify-between p-4">
@@ -73,12 +86,23 @@ export default function CalendarPage() {
         </button>
       </div>
 
-      <CalendarMonth currentMonth={month} events={data.events} />
+      <CalendarMonth
+        currentMonth={month}
+        events={data.events}
+        onSelectDate={(date) => {
+          setEditingEvent(null);
+          setSelectedDate(date);
+        }}
+        onSelectEvent={(event) => {
+          setSelectedDate(null);
+          setEditingEvent(event);
+        }}
+      />
 
       <section className="card space-y-4 p-5">
         <div>
-          <h3 className="text-lg font-semibold">予定を検索</h3>
-          <p className="mt-1 text-sm text-ink/60">タイトルや種類、通知設定で見たい予定だけに絞れます。</p>
+          <h3 className="text-lg font-semibold">予定を絞り込み</h3>
+          <p className="mt-1 text-sm text-ink/60">タイトル、種類、通知設定で見たい予定だけに絞れます。</p>
         </div>
 
         <input
@@ -92,13 +116,17 @@ export default function CalendarPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <select className="input" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as EventType | "すべて")}>
             {eventTypeOptions.map((option) => (
-              <option key={option} value={option}>{`種類: ${option}`}</option>
+              <option key={option} value={option}>
+                {`種類: ${option}`}
+              </option>
             ))}
           </select>
 
           <select className="input" value={notifyFilter} onChange={(event) => setNotifyFilter(event.target.value as (typeof notifyOptions)[number])}>
             {notifyOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={option} value={option}>
+                {option}
+              </option>
             ))}
           </select>
         </div>
@@ -125,12 +153,21 @@ export default function CalendarPage() {
             title={data.events.length > 0 ? "条件に合う予定がありません" : "予定がまだありません"}
             description={
               data.events.length > 0
-                ? "検索条件を変更すると表示される可能性があります。"
-                : "散歩や病院の予定を登録するとここに表示されます。"
+                ? "検索条件や絞り込みを変えると表示される可能性があります。"
+                : "カレンダーの日付をタップするか、右上の追加から予定を登録できます。"
             }
           />
         )}
       </section>
+
+      <CalendarEventModal
+        selectedDate={selectedDate}
+        editingEvent={editingEvent}
+        onClose={() => {
+          setSelectedDate(null);
+          setEditingEvent(null);
+        }}
+      />
     </div>
   );
 }

@@ -8,31 +8,39 @@ import { getTodayDateString } from "@/lib/utils";
 
 const eventTypes: EventType[] = ["散歩", "病院", "薬", "シャンプー", "その他"];
 const reminderOptions = [
-  { label: "予定時刻ちょうど", value: 0 },
+  { label: "開始時に通知", value: 0 },
   { label: "15分前", value: 15 },
   { label: "30分前", value: 30 },
   { label: "1時間前", value: 60 },
   { label: "前日", value: 60 * 24 }
 ];
 
+type EventInput = Omit<CalendarEvent, "id" | "createdAt">;
+
 type EventFormProps = {
   initialEvent?: CalendarEvent;
+  initialDate?: string;
   submitLabel?: string;
-  onSubmitEvent?: (event: Omit<CalendarEvent, "id" | "createdAt">) => void;
+  onSubmitEvent?: (event: EventInput) => void;
+  redirectOnSubmit?: boolean;
+  className?: string;
 };
 
 export function EventForm({
   initialEvent,
-  submitLabel = "予定を保存",
-  onSubmitEvent
+  initialDate,
+  submitLabel = "保存する",
+  onSubmitEvent,
+  redirectOnSubmit = true,
+  className = "card space-y-5 p-5"
 }: EventFormProps) {
   const router = useRouter();
   const { addEvent } = useAppData();
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<EventInput>({
     title: initialEvent?.title ?? "",
-    date: initialEvent?.date ?? getTodayDateString(),
+    date: initialEvent?.date ?? initialDate ?? getTodayDateString(),
     time: initialEvent?.time ?? "09:00",
-    type: initialEvent?.type ?? ("散歩" as EventType),
+    type: initialEvent?.type ?? "散歩",
     notify: initialEvent?.notify ?? true,
     reminderMinutes: initialEvent?.reminderMinutes ?? 30,
     memo: initialEvent?.memo ?? ""
@@ -40,24 +48,30 @@ export function EventForm({
 
   return (
     <form
-      className="card space-y-5 p-5"
+      className={className}
       onSubmit={(event) => {
         event.preventDefault();
+
         if (onSubmitEvent) {
           onSubmitEvent(form);
         } else {
           addEvent(form);
         }
-        router.push("/calendar");
+
+        if (redirectOnSubmit) {
+          router.push("/calendar");
+        }
       }}
     >
       <div>
-        <label className="label" htmlFor="event-title">タイトル</label>
+        <label className="label" htmlFor="event-title">
+          タイトル
+        </label>
         <input
           id="event-title"
           className="input"
           type="text"
-          placeholder="病院の定期検診"
+          placeholder="例: 朝のお散歩"
           value={form.title}
           onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
           required
@@ -65,7 +79,9 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="label" htmlFor="event-date">日付</label>
+        <label className="label" htmlFor="event-date">
+          日付
+        </label>
         <input
           id="event-date"
           className="input date-input"
@@ -77,7 +93,9 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="label" htmlFor="event-time">時間</label>
+        <label className="label" htmlFor="event-time">
+          時間
+        </label>
         <input
           id="event-time"
           className="input time-input"
@@ -89,7 +107,9 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="label" htmlFor="event-type">種類</label>
+        <label className="label" htmlFor="event-type">
+          種類
+        </label>
         <select
           id="event-type"
           className="input"
@@ -97,7 +117,9 @@ export function EventForm({
           onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as EventType }))}
         >
           {eventTypes.map((option) => (
-            <option key={option} value={option}>{option}</option>
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
         </select>
       </div>
@@ -112,7 +134,9 @@ export function EventForm({
       </label>
 
       <div>
-        <label className="label" htmlFor="event-reminder">通知タイミング</label>
+        <label className="label" htmlFor="event-reminder">
+          通知タイミング
+        </label>
         <select
           id="event-reminder"
           className="input"
@@ -134,7 +158,9 @@ export function EventForm({
       </div>
 
       <div>
-        <label className="label" htmlFor="event-memo">メモ</label>
+        <label className="label" htmlFor="event-memo">
+          メモ
+        </label>
         <textarea
           id="event-memo"
           className="input min-h-28 resize-none"
@@ -144,7 +170,9 @@ export function EventForm({
         />
       </div>
 
-      <button className="button-primary w-full" type="submit">{submitLabel}</button>
+      <button className="button-primary w-full" type="submit">
+        {submitLabel}
+      </button>
     </form>
   );
 }
