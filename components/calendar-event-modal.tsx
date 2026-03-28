@@ -17,18 +17,26 @@ export function CalendarEventModal({
 }) {
   const { addEvent, updateEvent, deleteEvent } = useAppData();
   const [mounted, setMounted] = useState(false);
+  const isOpen = Boolean(selectedDate || editingEvent);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     return () => {
       document.body.style.overflow = originalOverflow;
     };
-  }, []);
+  }, [isOpen]);
 
-  if (!mounted || (!selectedDate && !editingEvent)) {
+  if (!mounted || !isOpen) {
     return null;
   }
 
