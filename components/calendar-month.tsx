@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { CalendarEvent } from "@/lib/types";
 import { buildMonthMatrix, getEventTypeClassName } from "@/lib/utils";
 
@@ -16,6 +17,7 @@ export function CalendarMonth({
   onSelectDate: (date: string) => void;
   onSelectEvent: (event: CalendarEvent) => void;
 }) {
+  const pointerStartRef = useRef<Record<string, { x: number; y: number }>>({});
   const days = buildMonthMatrix(currentMonth);
 
   return (
@@ -33,15 +35,25 @@ export function CalendarMonth({
           return (
             <div
               key={day.key}
-              role="button"
-              tabIndex={0}
               className={`min-h-28 bg-white p-2 text-left align-top transition hover:bg-cream/30 ${
                 day.isCurrentMonth ? "" : "bg-white/55 text-ink/35"
               }`}
-              onClick={() => onSelectDate(day.key)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
+              onPointerDown={(event) => {
+                pointerStartRef.current[day.key] = {
+                  x: event.clientX,
+                  y: event.clientY
+                };
+              }}
+              onPointerUp={(event) => {
+                const start = pointerStartRef.current[day.key];
+                if (!start) {
+                  return;
+                }
+
+                const movedX = Math.abs(event.clientX - start.x);
+                const movedY = Math.abs(event.clientY - start.y);
+
+                if (movedX < 8 && movedY < 8) {
                   onSelectDate(day.key);
                 }
               }}
