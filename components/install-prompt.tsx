@@ -81,7 +81,7 @@ export function InstallPrompt() {
     }
   }
 
-  if (dismissed && !installEvent && !isIos && !isStandalone) {
+  if (dismissed) {
     return null;
   }
 
