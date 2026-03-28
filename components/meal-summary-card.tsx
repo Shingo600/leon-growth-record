@@ -264,30 +264,16 @@ export function MealSummaryCard({
                   }
 
                   return (
-                    <div key={record.id} className="rounded-2xl bg-white/70 px-3 py-3 text-sm leading-6 text-ink/75">
+                    <button
+                      key={record.id}
+                      type="button"
+                      className="w-full rounded-2xl bg-white/70 px-3 py-3 text-left text-sm leading-6 text-ink/75 transition hover:bg-white active:scale-[0.99]"
+                      onClick={() => setEditingRecord(record)}
+                    >
                       <p className="break-words">{detailParts.join(" ")}</p>
                       {record.memo ? <p className="mt-1 break-words text-ink/60">{record.memo}</p> : null}
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          className="button-secondary w-full px-3 py-2 text-xs"
-                          onClick={() => setEditingRecord(record)}
-                        >
-                          編集
-                        </button>
-                        <button
-                          type="button"
-                          className="button-secondary w-full px-3 py-2 text-xs"
-                          onClick={() => {
-                            if (window.confirm("このごはん記録を削除しますか？")) {
-                              deleteMealRecord(record.id);
-                            }
-                          }}
-                        >
-                          削除
-                        </button>
-                      </div>
-                    </div>
+                      <p className="mt-2 text-xs text-ink/45">この枠をタップして編集・削除</p>
+                    </button>
                   );
                 })}
               </div>
