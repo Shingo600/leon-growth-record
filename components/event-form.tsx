@@ -68,7 +68,7 @@ export function EventForm({
         <label className="label" htmlFor="event-date">日付</label>
         <input
           id="event-date"
-          className="input"
+          className="input date-input"
           type="date"
           value={form.date}
           onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
@@ -80,7 +80,7 @@ export function EventForm({
         <label className="label" htmlFor="event-time">時間</label>
         <input
           id="event-time"
-          className="input"
+          className="input time-input"
           type="time"
           value={form.time}
           onChange={(event) => setForm((current) => ({ ...current, time: event.target.value }))}

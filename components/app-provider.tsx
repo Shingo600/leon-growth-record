@@ -57,6 +57,8 @@ type AppContextValue = {
   addActivityRecord: (record: ActivityRecordInput) => void;
   addMealRecord: (record: MealRecordInput) => void;
   addExpenseRecord: (record: ExpenseRecordInput) => void;
+  updateExpenseRecord: (id: string, record: ExpenseRecordInput) => void;
+  deleteExpenseRecord: (id: string) => void;
   addFoodItem: (item: FoodItemInput) => void;
   updateFoodItem: (id: string, item: FoodItemInput) => void;
   deleteFoodItem: (id: string) => void;
@@ -361,6 +363,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
             },
             ...current.expenseRecords
           ])
+        }));
+      },
+      updateExpenseRecord(id, record) {
+        setData((current) => ({
+          ...current,
+          expenseRecords: sortExpenseRecords(
+            current.expenseRecords.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    ...record
+                  }
+                : item
+            )
+          )
+        }));
+      },
+      deleteExpenseRecord(id) {
+        setData((current) => ({
+          ...current,
+          expenseRecords: sortExpenseRecords(current.expenseRecords.filter((item) => item.id !== id))
         }));
       },
       addFoodItem(item) {

@@ -47,7 +47,8 @@ textarea {
   min-width: 0;
 }
 
-.date-input {
+.date-input,
+.time-input {
   min-width: 0;
   max-width: 100%;
   width: 100%;
@@ -55,11 +56,13 @@ textarea {
   -webkit-appearance: none;
 }
 
-.date-input::-webkit-date-and-time-value {
+.date-input::-webkit-date-and-time-value,
+.time-input::-webkit-date-and-time-value {
   text-align: left;
 }
 
-.date-input::-webkit-calendar-picker-indicator {
+.date-input::-webkit-calendar-picker-indicator,
+.time-input::-webkit-calendar-picker-indicator {
   opacity: 0.9;
 }
 
