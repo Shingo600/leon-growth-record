@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import { CalendarEvent } from "@/lib/types";
 import { buildMonthMatrix, getEventTypeClassName } from "@/lib/utils";
 
@@ -17,8 +16,6 @@ export function CalendarMonth({
   onSelectDate: (date: string) => void;
   onSelectEvent: (event: CalendarEvent) => void;
 }) {
-  const touchStartRef = useRef<Record<string, { x: number; y: number; moved: boolean }>>({});
-  const suppressClickRef = useRef(false);
   const days = buildMonthMatrix(currentMonth);
 
   return (
@@ -39,55 +36,14 @@ export function CalendarMonth({
               className={`min-h-28 bg-white p-2 text-left align-top transition hover:bg-cream/30 ${
                 day.isCurrentMonth ? "" : "bg-white/55 text-ink/35"
               }`}
-              style={{ touchAction: "pan-y" }}
-              onTouchStart={(event) => {
-                const touch = event.touches[0];
-                touchStartRef.current[day.key] = {
-                  x: touch.clientX,
-                  y: touch.clientY,
-                  moved: false
-                };
-              }}
-              onTouchMove={(event) => {
-                const start = touchStartRef.current[day.key];
-                if (!start) {
-                  return;
-                }
-
-                const touch = event.touches[0];
-                const movedX = Math.abs(touch.clientX - start.x);
-                const movedY = Math.abs(touch.clientY - start.y);
-
-                if (movedX > 8 || movedY > 8) {
-                  start.moved = true;
-                }
-              }}
-              onTouchEnd={() => {
-                const start = touchStartRef.current[day.key];
-                if (!start) {
-                  return;
-                }
-
-                suppressClickRef.current = true;
-                window.setTimeout(() => {
-                  suppressClickRef.current = false;
-                }, 300);
-
-                if (!start.moved) {
-                  onSelectDate(day.key);
-                }
-
-                delete touchStartRef.current[day.key];
-              }}
-              onClick={() => {
-                if (suppressClickRef.current) {
-                  return;
-                }
-
-                onSelectDate(day.key);
-              }}
             >
-              <p className="text-xs font-semibold">{day.date.getDate()}</p>
+              <button
+                type="button"
+                className="rounded-lg px-1 py-0.5 text-xs font-semibold transition hover:bg-cream/70"
+                onClick={() => onSelectDate(day.key)}
+              >
+                {day.date.getDate()}
+              </button>
               <div className="mt-2 space-y-1">
                 {dayEvents.slice(0, 2).map((event) => (
                   <button
