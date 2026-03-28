@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+const INSTALL_PROMPT_DISMISSED_KEY = "leon-install-prompt-dismissed";
+
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -30,6 +32,11 @@ export function InstallPrompt() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
+    const savedDismissed = window.localStorage.getItem(INSTALL_PROMPT_DISMISSED_KEY);
+    if (savedDismissed === "true") {
+      setDismissed(true);
+    }
+
     setIsStandalone(detectStandalone());
     setIsIos(detectIos());
 
@@ -41,6 +48,7 @@ export function InstallPrompt() {
     const handleInstalled = () => {
       setInstallEvent(null);
       setIsStandalone(true);
+      window.localStorage.removeItem(INSTALL_PROMPT_DISMISSED_KEY);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -58,11 +66,11 @@ export function InstallPrompt() {
     }
 
     if (installEvent) {
-      return "この端末ではホーム画面に追加できます。ボタンからインストールを進めてください。";
+      return "この端末ではホーム画面に追加できます。ボタンからインストールしてください。";
     }
 
     if (isIos) {
-      return "iPhoneでは Safari の共有メニューから「ホーム画面に追加」で使えます。";
+      return "iPhone では Safari の共有メニューから「ホーム画面に追加」で使えます。";
     }
 
     return "このブラウザでは自動のインストール案内が出ていません。Chrome 系ブラウザだと表示されやすいです。";
@@ -79,6 +87,11 @@ export function InstallPrompt() {
     if (choice.outcome === "accepted") {
       setInstallEvent(null);
     }
+  }
+
+  function handleDismiss() {
+    setDismissed(true);
+    window.localStorage.setItem(INSTALL_PROMPT_DISMISSED_KEY, "true");
   }
 
   if (dismissed) {
@@ -102,7 +115,7 @@ export function InstallPrompt() {
             追加する
           </button>
         ) : (
-          <button type="button" className="button-secondary shrink-0 px-4 py-2" onClick={() => setDismissed(true)}>
+          <button type="button" className="button-secondary shrink-0 px-4 py-2" onClick={handleDismiss}>
             閉じる
           </button>
         )}
