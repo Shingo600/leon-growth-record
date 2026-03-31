@@ -85,6 +85,22 @@ function getProfileWeight(records: GrowthRecord[], currentWeight: number) {
   return records[0]?.taijyuu ?? currentWeight;
 }
 
+function hasMeaningfulData(appData: AppData) {
+  return Boolean(
+    appData.records.length ||
+      appData.events.length ||
+      appData.healthRecords.length ||
+      appData.activityRecords.length ||
+      appData.mealRecords.length ||
+      appData.foodItems.length ||
+      appData.expenseRecords.length ||
+      appData.profile.breed ||
+      appData.profile.birthday ||
+      appData.profile.arrivalDate ||
+      appData.profile.photoUrl
+  );
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(getInitialData);
   const [isReady, setIsReady] = useState(false);
@@ -116,7 +132,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
 
         if (result.ok && result.data) {
-          setData(result.data);
+          const nextData =
+            localData && hasMeaningfulData(localData) && !hasMeaningfulData(result.data)
+              ? localData
+              : result.data;
+          setData(nextData);
           setSyncStatus("synced");
           setSyncMessage("Supabase と同期中です。家族の端末とも同じデータを使えます。");
         } else if (result.ok && !result.data) {
@@ -152,11 +172,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const shouldSaveLocal = !isSupabaseConfigured() || storageMode === "local";
-    if (shouldSaveLocal) {
-      const localResult = saveAppData(data);
+    const localResult = saveAppData(data);
+    const shouldShowLocalError = !isSupabaseConfigured() || storageMode === "local";
+    if (shouldShowLocalError) {
       setSaveError(localResult.ok ? "" : localResult.message);
-    } else {
+    } else if (localResult.ok) {
       setSaveError("");
     }
 
