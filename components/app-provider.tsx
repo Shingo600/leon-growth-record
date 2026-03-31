@@ -146,7 +146,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setStorageMode("local");
           setSyncStatus("error");
           setSyncMessage("クラウド同期に失敗したため、この端末の保存に切り替えています。");
-          setSaveError(result.message);
+          setSaveError("message" in result ? result.message : "");
         }
       } else {
         setStorageMode("local");
@@ -200,7 +200,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } else {
         setSyncStatus("error");
         setSyncMessage("Supabase への保存に失敗しました。この端末のデータは保持されています。");
-        setSaveError(result.message);
+        setSaveError("message" in result ? result.message : "");
       }
     }
 
