@@ -3,20 +3,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useAppData } from "@/components/app-provider";
-import { FoodDatabaseSelector } from "@/components/food-database-selector";
-import { FoodItem, MealRecord, MealType } from "@/lib/types";
+import { MealEntryForm } from "@/components/meal-entry-form";
+import type { FoodItem, MealRecord, MealType } from "@/lib/types";
 import { findFoodItem } from "@/lib/utils";
 
 const mealTypes: MealType[] = ["朝", "昼", "夜", "おやつ"];
-
-type MealFormState = {
-  mealType: MealType;
-  foodItemId: string;
-  grams: string;
-  time: string;
-  leftoverRate: string;
-  memo: string;
-};
 
 function MealModalShell({
   title,
@@ -64,148 +55,52 @@ function MealModalShell({
   );
 }
 
-function toMealFormState(record: MealRecord): MealFormState {
-  return {
-    mealType: record.mealType,
-    foodItemId: record.foodItemId,
-    grams: String(record.grams),
-    time: record.time,
-    leftoverRate: String(record.leftoverRate),
-    memo: record.memo
-  };
-}
-
 function MealEditModal({
   record,
   foodItems,
+  mealRecords,
   onClose
 }: {
   record: MealRecord;
   foodItems: FoodItem[];
+  mealRecords: MealRecord[];
   onClose: () => void;
 }) {
   const { updateMealRecord, deleteMealRecord } = useAppData();
-  const [form, setForm] = useState<MealFormState>(() => toMealFormState(record));
 
   return (
-    <MealModalShell title="ごはん記録を編集" onClose={onClose}>
-      <form
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault();
+    <MealModalShell title="食事を編集" onClose={onClose}>
+      <MealEntryForm
+        foodItems={foodItems}
+        mealRecords={mealRecords.filter((item) => item.id !== record.id)}
+        initialValue={{
+          mealType: record.mealType,
+          foodItemId: record.foodItemId,
+          grams: `${record.grams}`,
+          time: record.time,
+          leftoverRate: `${record.leftoverRate}`,
+          memo: record.memo
+        }}
+        submitLabel="更新する"
+        onDelete={() => {
+          if (window.confirm("この食事記録を削除しますか？")) {
+            deleteMealRecord(record.id);
+            onClose();
+          }
+        }}
+        onSubmit={(draft) => {
           updateMealRecord(record.id, {
             date: record.date,
-            time: form.time,
-            mealType: form.mealType,
-            foodItemId: form.foodItemId,
-            grams: Number(form.grams),
-            leftoverRate: Number(form.leftoverRate),
-            memo: form.memo
+            time: draft.time,
+            mealType: draft.mealType,
+            foodItemId: draft.foodItemId,
+            grams: draft.grams,
+            leftoverRate: draft.leftoverRate,
+            memo: draft.memo
           });
           onClose();
         }}
-      >
-        <div>
-          <label className="label" htmlFor="edit-meal-type">
-            食事の種類
-          </label>
-          <select
-            id="edit-meal-type"
-            className="input"
-            value={form.mealType}
-            onChange={(event) => setForm((current) => ({ ...current, mealType: event.target.value as MealType }))}
-          >
-            {mealTypes.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="label">フード</label>
-          <FoodDatabaseSelector
-            foodItems={foodItems}
-            value={form.foodItemId}
-            onChange={(value) => setForm((current) => ({ ...current, foodItemId: value }))}
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="edit-meal-grams">
-            グラム数
-          </label>
-          <input
-            id="edit-meal-grams"
-            className="input"
-            type="number"
-            min="1"
-            value={form.grams}
-            onChange={(event) => setForm((current) => ({ ...current, grams: event.target.value }))}
-            required
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="edit-meal-time">
-            食べた時間
-          </label>
-          <input
-            id="edit-meal-time"
-            className="input time-input"
-            type="time"
-            value={form.time}
-            onChange={(event) => setForm((current) => ({ ...current, time: event.target.value }))}
-            required
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="edit-meal-leftover">
-            食べ残し率
-          </label>
-          <input
-            id="edit-meal-leftover"
-            className="input"
-            type="number"
-            min="0"
-            max="100"
-            value={form.leftoverRate}
-            onChange={(event) => setForm((current) => ({ ...current, leftoverRate: event.target.value }))}
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="edit-meal-memo">
-            メモ
-          </label>
-          <textarea
-            id="edit-meal-memo"
-            className="input min-h-24 resize-none"
-            value={form.memo}
-            onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            className="button-secondary w-full"
-            onClick={() => {
-              if (window.confirm("このごはん記録を削除しますか？")) {
-                deleteMealRecord(record.id);
-                onClose();
-              }
-            }}
-          >
-            削除
-          </button>
-          <button className="button-primary w-full" type="submit">
-            更新する
-          </button>
-        </div>
-      </form>
+      />
     </MealModalShell>
   );
 }
@@ -219,7 +114,6 @@ export function MealSummaryCard({
   foodItems: FoodItem[];
   today: string;
 }) {
-  const { deleteMealRecord } = useAppData();
   const [editingRecord, setEditingRecord] = useState<MealRecord | null>(null);
 
   const todayMeals = useMemo(
@@ -286,7 +180,12 @@ export function MealSummaryCard({
       )}
 
       {editingRecord ? (
-        <MealEditModal record={editingRecord} foodItems={foodItems} onClose={() => setEditingRecord(null)} />
+        <MealEditModal
+          record={editingRecord}
+          foodItems={foodItems}
+          mealRecords={mealRecords}
+          onClose={() => setEditingRecord(null)}
+        />
       ) : null}
     </section>
   );

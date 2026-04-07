@@ -4,12 +4,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { FoodDatabaseSelector } from "@/components/food-database-selector";
+import { MealEntryForm } from "@/components/meal-entry-form";
 import { useAppData } from "@/components/app-provider";
-import { FoodItem, MealType } from "@/lib/types";
+import type { FoodItem } from "@/lib/types";
 import { getTodayDateString } from "@/lib/utils";
-
-const mealTypes: MealType[] = ["朝", "昼", "夜", "おやつ"];
 
 function ModalShell({
   title,
@@ -58,129 +56,27 @@ function ModalShell({
 }
 
 function MealModal({ onClose, foodItems }: { onClose: () => void; foodItems: FoodItem[] }) {
-  const { addMealRecord } = useAppData();
-  const hasFoodItems = foodItems.length > 0;
-  const [form, setForm] = useState({
-    mealType: "朝" as MealType,
-    foodItemId: foodItems[0]?.id ?? "",
-    grams: "55",
-    time: "07:10",
-    leftoverRate: "0",
-    memo: ""
-  });
+  const { addMealRecord, data } = useAppData();
 
   return (
     <ModalShell title="ごはんを記録" onClose={onClose}>
-      <form
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!hasFoodItems || !form.foodItemId) {
-            return;
-          }
-
+      <MealEntryForm
+        foodItems={foodItems}
+        mealRecords={data.mealRecords}
+        submitLabel="記録する"
+        onSubmit={(draft) => {
           addMealRecord({
             date: getTodayDateString(),
-            time: form.time,
-            mealType: form.mealType,
-            foodItemId: form.foodItemId,
-            grams: Number(form.grams),
-            leftoverRate: Number(form.leftoverRate),
-            memo: form.memo
+            time: draft.time,
+            mealType: draft.mealType,
+            foodItemId: draft.foodItemId,
+            grams: draft.grams,
+            leftoverRate: draft.leftoverRate,
+            memo: draft.memo
           });
           onClose();
         }}
-      >
-        <div>
-          <label className="label" htmlFor="meal-type">
-            食事の種類
-          </label>
-          <select
-            id="meal-type"
-            className="input"
-            value={form.mealType}
-            onChange={(event) => setForm((current) => ({ ...current, mealType: event.target.value as MealType }))}
-          >
-            {mealTypes.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="label">フード</label>
-          <FoodDatabaseSelector
-            foodItems={foodItems}
-            value={form.foodItemId}
-            onChange={(value) => setForm((current) => ({ ...current, foodItemId: value }))}
-          />
-          {!hasFoodItems ? (
-            <p className="mt-2 text-xs leading-5 text-ink/55">
-              先にプロフィール画面の「ごはんデータベース」でフードを登録してください。
-            </p>
-          ) : null}
-        </div>
-
-        <div>
-          <label className="label" htmlFor="meal-grams">
-            グラム数
-          </label>
-          <input
-            id="meal-grams"
-            className="input"
-            type="number"
-            min="1"
-            value={form.grams}
-            onChange={(event) => setForm((current) => ({ ...current, grams: event.target.value }))}
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="meal-time">
-            食べた時間
-          </label>
-          <input
-            id="meal-time"
-            className="input time-input"
-            type="time"
-            value={form.time}
-            onChange={(event) => setForm((current) => ({ ...current, time: event.target.value }))}
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="meal-leftover">
-            食べ残し率
-          </label>
-          <input
-            id="meal-leftover"
-            className="input"
-            type="number"
-            min="0"
-            max="100"
-            value={form.leftoverRate}
-            onChange={(event) => setForm((current) => ({ ...current, leftoverRate: event.target.value }))}
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="meal-memo">
-            メモ
-          </label>
-          <textarea
-            id="meal-memo"
-            className="input min-h-24 resize-none"
-            value={form.memo}
-            onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))}
-          />
-        </div>
-
-        <button className="button-primary w-full disabled:opacity-50" type="submit" disabled={!hasFoodItems || !form.foodItemId}>
-          記録する
-        </button>
-      </form>
+      />
     </ModalShell>
   );
 }
@@ -197,7 +93,7 @@ export function QuickAddActions({
   return (
     <section className="card space-y-4 p-5">
       <div>
-        <p className="text-sm text-ink/60">今日の記録</p>
+        <p className="text-sm text-ink/60">クイック入力</p>
         <h3 className="mt-1 text-xl font-semibold">すぐ記録する</h3>
       </div>
 

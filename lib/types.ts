@@ -93,6 +93,7 @@ export type FoodItem = {
   category: FoodCategory;
   caloriesPer100g: number;
   servingSize: number;
+  mealRecommendations?: Partial<Record<MealType, number>>;
   memo: string;
   openedDate: string;
   price: number | null;
