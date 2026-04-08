@@ -3,22 +3,28 @@
 import { useMemo, useState } from "react";
 import { CalendarEventModal } from "@/components/calendar-event-modal";
 import { CalendarMonth } from "@/components/calendar-month";
+import { DailyDetailModal } from "@/components/daily-detail-modal";
 import { EmptyState } from "@/components/empty-state";
-import { EventCard } from "@/components/event-card";
+import { MonthlyTimelineList } from "@/components/monthly-timeline-list";
 import { PageHeader } from "@/components/page-header";
 import { useAppData } from "@/components/app-provider";
-import { CalendarEvent, EventType } from "@/lib/types";
+import { buildMonthlyTimeline } from "@/lib/daily";
 
-const eventTypeOptions: Array<EventType | "すべて"> = ["すべて", "散歩", "病院", "薬", "シャンプー", "その他"];
-const notifyOptions = ["すべて", "通知あり", "通知なし"] as const;
+const listFilters = [
+  { key: "all", label: "すべて" },
+  { key: "record", label: "成長記録" },
+  { key: "meal", label: "ごはん" },
+  { key: "activity", label: "活動" },
+  { key: "health", label: "健康" },
+  { key: "event", label: "予定" }
+] as const;
 
 export default function CalendarPage() {
   const { data } = useAppData();
-  const [searchText, setSearchText] = useState("");
-  const [typeFilter, setTypeFilter] = useState<EventType | "すべて">("すべて");
-  const [notifyFilter, setNotifyFilter] = useState<(typeof notifyOptions)[number]>("すべて");
+  const [mode, setMode] = useState<"calendar" | "list">("calendar");
+  const [listFilter, setListFilter] = useState<(typeof listFilters)[number]["key"]>("all");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [editingEventDate, setEditingEventDate] = useState<string | null>(null);
   const [month, setMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -29,44 +35,57 @@ export default function CalendarPage() {
     [month]
   );
 
-  const filteredEvents = useMemo(() => {
-    const keyword = searchText.trim().toLowerCase();
+  const monthlyTimeline = useMemo(() => buildMonthlyTimeline(data, month), [data, month]);
 
-    return data.events.filter((event) => {
-      const matchesKeyword =
-        keyword.length === 0 ||
-        event.title.toLowerCase().includes(keyword) ||
-        event.memo.toLowerCase().includes(keyword) ||
-        event.date.includes(keyword);
-
-      const matchesType = typeFilter === "すべて" || event.type === typeFilter;
-      const matchesNotify =
-        notifyFilter === "すべて" ||
-        (notifyFilter === "通知あり" && event.notify) ||
-        (notifyFilter === "通知なし" && !event.notify);
-
-      return matchesKeyword && matchesType && matchesNotify;
-    });
-  }, [data.events, notifyFilter, searchText, typeFilter]);
+  const markers = useMemo(
+    () =>
+      Object.fromEntries(
+        monthlyTimeline.map((item) => [
+          item.date,
+          {
+            hasRecord: Boolean(item.record),
+            hasMeal: item.meals.length > 0,
+            hasActivity: item.activityItems.some((activity) => activity.current > 0),
+            hasHealth: item.healthRecords.length > 0,
+            hasEvent: item.events.length > 0
+          }
+        ])
+      ),
+    [monthlyTimeline]
+  );
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="カレンダー"
-        description="予定を月表示と一覧表示の両方で確認できます。"
+        description="予定も記録も、日付を起点にまとめて振り返れます。"
         action={
           <button
             type="button"
             className="button-primary"
-            onClick={() => {
-              setEditingEvent(null);
-              setSelectedDate(new Date().toISOString().slice(0, 10));
-            }}
+            onClick={() => setEditingEventDate(new Date().toISOString().slice(0, 10))}
           >
             追加
           </button>
         }
       />
+
+      <div className="card flex gap-2 p-2">
+        <button
+          type="button"
+          className={`flex-1 rounded-2xl px-4 py-3 text-sm font-medium ${mode === "calendar" ? "bg-ink text-white" : "bg-cream text-ink/70"}`}
+          onClick={() => setMode("calendar")}
+        >
+          カレンダー
+        </button>
+        <button
+          type="button"
+          className={`flex-1 rounded-2xl px-4 py-3 text-sm font-medium ${mode === "list" ? "bg-ink text-white" : "bg-cream text-ink/70"}`}
+          onClick={() => setMode("list")}
+        >
+          一覧
+        </button>
+      </div>
 
       <div className="card flex items-center justify-between p-4">
         <button
@@ -86,87 +105,46 @@ export default function CalendarPage() {
         </button>
       </div>
 
-      <CalendarMonth
-        currentMonth={month}
-        events={data.events}
-        onSelectDate={(date) => {
-          setEditingEvent(null);
-          setSelectedDate(date);
-        }}
-        onSelectEvent={(event) => {
-          setSelectedDate(null);
-          setEditingEvent(event);
-        }}
-      />
-
-      <section className="card space-y-4 p-5">
-        <div>
-          <h3 className="text-lg font-semibold">予定を絞り込み</h3>
-          <p className="mt-1 text-sm text-ink/60">タイトル、種類、通知設定で見たい予定だけに絞れます。</p>
-        </div>
-
-        <input
-          className="input"
-          type="search"
-          placeholder="タイトル・メモ・日付で検索"
-          value={searchText}
-          onChange={(event) => setSearchText(event.target.value)}
+      {mode === "calendar" ? (
+        <CalendarMonth
+          currentMonth={month}
+          events={data.events}
+          markers={markers}
+          onSelectDate={setSelectedDate}
+          onSelectEvent={(event) => setSelectedDate(event.date)}
         />
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <select className="input" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as EventType | "すべて")}>
-            {eventTypeOptions.map((option) => (
-              <option key={option} value={option}>
-                {`種類: ${option}`}
-              </option>
+      ) : (
+        <section className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {listFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                className={`rounded-full px-4 py-2 text-sm ${listFilter === filter.key ? "bg-ink text-white" : "bg-cream text-ink/70"}`}
+                onClick={() => setListFilter(filter.key)}
+              >
+                {filter.label}
+              </button>
             ))}
-          </select>
+          </div>
 
-          <select className="input" value={notifyFilter} onChange={(event) => setNotifyFilter(event.target.value as (typeof notifyOptions)[number])}>
-            {notifyOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </div>
+          {monthlyTimeline.length > 0 ? (
+            <MonthlyTimelineList data={data} month={month} filter={listFilter} onSelectDate={setSelectedDate} />
+          ) : (
+            <EmptyState
+              title="この月の記録はまだありません"
+              description="日付を起点に記録がたまると、ここから自然に振り返れるようになります。"
+            />
+          )}
+        </section>
+      )}
 
-        <button
-          type="button"
-          className="button-secondary w-full"
-          onClick={() => {
-            setSearchText("");
-            setTypeFilter("すべて");
-            setNotifyFilter("すべて");
-          }}
-        >
-          条件をリセット
-        </button>
-      </section>
-
-      <section className="space-y-4">
-        <h3 className="text-lg font-semibold">予定一覧</h3>
-        {filteredEvents.length > 0 ? (
-          filteredEvents.map((event) => <EventCard key={event.id} event={event} />)
-        ) : (
-          <EmptyState
-            title={data.events.length > 0 ? "条件に合う予定がありません" : "予定がまだありません"}
-            description={
-              data.events.length > 0
-                ? "検索条件や絞り込みを変えると表示される可能性があります。"
-                : "カレンダーの日付をタップするか、右上の追加から予定を登録できます。"
-            }
-          />
-        )}
-      </section>
+      <DailyDetailModal date={selectedDate} onClose={() => setSelectedDate(null)} />
 
       <CalendarEventModal
-        selectedDate={selectedDate}
-        editingEvent={editingEvent}
-        onClose={() => {
-          setSelectedDate(null);
-          setEditingEvent(null);
-        }}
+        selectedDate={editingEventDate}
+        editingEvent={null}
+        onClose={() => setEditingEventDate(null)}
       />
     </div>
   );

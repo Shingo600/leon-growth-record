@@ -1,18 +1,28 @@
 "use client";
 
-import { CalendarEvent } from "@/lib/types";
+import type { CalendarEvent } from "@/lib/types";
 import { buildMonthMatrix, getEventTypeClassName } from "@/lib/utils";
 
 const weekLabels = ["日", "月", "火", "水", "木", "金", "土"];
 
+type DailyMarker = {
+  hasRecord: boolean;
+  hasMeal: boolean;
+  hasActivity: boolean;
+  hasHealth: boolean;
+  hasEvent: boolean;
+};
+
 export function CalendarMonth({
   currentMonth,
   events,
+  markers,
   onSelectDate,
   onSelectEvent
 }: {
   currentMonth: Date;
   events: CalendarEvent[];
+  markers: Record<string, DailyMarker>;
   onSelectDate: (date: string) => void;
   onSelectEvent: (event: CalendarEvent) => void;
 }) {
@@ -29,11 +39,12 @@ export function CalendarMonth({
       <div className="grid grid-cols-7 gap-px bg-sand/40">
         {days.map((day) => {
           const dayEvents = events.filter((event) => event.date === day.key);
+          const dayMarker = markers[day.key];
 
           return (
             <div
               key={day.key}
-              className={`min-h-28 bg-white p-2 text-left align-top transition hover:bg-cream/30 ${
+              className={`min-h-28 bg-white p-2 text-left align-top ${
                 day.isCurrentMonth ? "" : "bg-white/55 text-ink/35"
               }`}
             >
@@ -44,6 +55,17 @@ export function CalendarMonth({
               >
                 {day.date.getDate()}
               </button>
+
+              {dayMarker ? (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {dayMarker.hasRecord ? <span className="h-2 w-2 rounded-full bg-ink" /> : null}
+                  {dayMarker.hasMeal ? <span className="h-2 w-2 rounded-full bg-amber-300" /> : null}
+                  {dayMarker.hasActivity ? <span className="h-2 w-2 rounded-full bg-emerald-300" /> : null}
+                  {dayMarker.hasHealth ? <span className="h-2 w-2 rounded-full bg-sky-300" /> : null}
+                  {dayMarker.hasEvent ? <span className="h-2 w-2 rounded-full bg-rose-300" /> : null}
+                </div>
+              ) : null}
+
               <div className="mt-2 space-y-1">
                 {dayEvents.slice(0, 2).map((event) => (
                   <button
@@ -66,7 +88,7 @@ export function CalendarMonth({
                     className="text-[10px] text-ink/55"
                     onClick={(clickEvent) => {
                       clickEvent.stopPropagation();
-                      onSelectEvent(dayEvents[0]);
+                      onSelectDate(day.key);
                     }}
                   >
                     +{dayEvents.length - 2}件

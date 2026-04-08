@@ -4,7 +4,7 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppData } from "@/components/app-provider";
-import { Appetite, EnergyLevel, GrowthRecord, PoopCondition } from "@/lib/types";
+import type { Appetite, EnergyLevel, GrowthRecord, PoopCondition } from "@/lib/types";
 import { getTodayDateString } from "@/lib/utils";
 
 const appetiteOptions: Appetite[] = ["良い", "普通", "悪い"];
@@ -27,7 +27,7 @@ function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(new Error("画像の読込に失敗しました"));
+    reader.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
     reader.readAsDataURL(file);
   });
 }
@@ -53,22 +53,28 @@ async function convertHeicToJpeg(file: File) {
 
 type RecordFormProps = {
   initialRecord?: GrowthRecord;
+  initialDate?: string;
   submitLabel?: string;
   onSubmitRecord?: (record: Omit<GrowthRecord, "id" | "createdAt">) => void;
+  redirectOnSubmit?: boolean;
+  className?: string;
 };
 
 export function RecordForm({
   initialRecord,
-  submitLabel = "記録を保存",
-  onSubmitRecord
+  initialDate,
+  submitLabel = "保存する",
+  onSubmitRecord,
+  redirectOnSubmit = true,
+  className = "card space-y-5 p-5"
 }: RecordFormProps) {
   const router = useRouter();
   const { addRecord } = useAppData();
   const [imageMessage, setImageMessage] = useState("");
   const [selectedFileName, setSelectedFileName] = useState("");
   const [form, setForm] = useState({
-    date: initialRecord?.date ?? getTodayDateString(),
-    taijyuu: String(initialRecord?.taijyuu ?? "3.8"),
+    date: initialRecord?.date ?? initialDate ?? getTodayDateString(),
+    taijyuu: String(initialRecord?.taijyuu ?? "0"),
     appetite: initialRecord?.appetite ?? ("良い" as Appetite),
     energyLevel: initialRecord?.energyLevel ?? ("元気" as EnergyLevel),
     poopCondition: initialRecord?.poopCondition ?? ("良い" as PoopCondition),
@@ -94,15 +100,15 @@ export function RecordForm({
         const converted = await convertHeicToJpeg(file);
         setForm((current) => ({ ...current, photoUrl: converted.dataUrl }));
         setSelectedFileName(converted.fileName);
-        setImageMessage("HEIC画像をJPEGに変換してセットしました。更新すると保存されます。");
+        setImageMessage("HEIC画像をJPEGに変換してセットしました。");
       } else {
         const dataUrl = await readFileAsDataUrl(file);
         setForm((current) => ({ ...current, photoUrl: dataUrl }));
         setSelectedFileName(file.name);
-        setImageMessage("端末画像をセットしました。更新すると保存されます。");
+        setImageMessage("端末画像をセットしました。");
       }
     } catch {
-      setImageMessage("画像の読み込みに失敗しました。HEIC画像の場合は変換に失敗しました。");
+      setImageMessage("画像の読み込みに失敗しました。");
       setSelectedFileName("");
     } finally {
       event.target.value = "";
@@ -111,7 +117,7 @@ export function RecordForm({
 
   return (
     <form
-      className="card space-y-5 p-5"
+      className={className}
       onSubmit={(event) => {
         event.preventDefault();
         const nextRecord = {
@@ -125,11 +131,15 @@ export function RecordForm({
           addRecord(nextRecord);
         }
 
-        router.push("/records");
+        if (redirectOnSubmit) {
+          router.push("/records");
+        }
       }}
     >
       <div>
-        <label className="label" htmlFor="record-date">日付</label>
+        <label className="label" htmlFor="record-date">
+          日付
+        </label>
         <input
           id="record-date"
           className="input date-input"
@@ -141,7 +151,9 @@ export function RecordForm({
       </div>
 
       <div>
-        <label className="label" htmlFor="record-weight">体重</label>
+        <label className="label" htmlFor="record-weight">
+          体重
+        </label>
         <input
           id="record-weight"
           className="input"
@@ -155,7 +167,9 @@ export function RecordForm({
       </div>
 
       <div>
-        <label className="label" htmlFor="record-appetite">食欲</label>
+        <label className="label" htmlFor="record-appetite">
+          食欲
+        </label>
         <select
           id="record-appetite"
           className="input"
@@ -163,13 +177,17 @@ export function RecordForm({
           onChange={(event) => setForm((current) => ({ ...current, appetite: event.target.value as Appetite }))}
         >
           {appetiteOptions.map((option) => (
-            <option key={option} value={option}>{option}</option>
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
         </select>
       </div>
 
       <div>
-        <label className="label" htmlFor="record-energy">元気度</label>
+        <label className="label" htmlFor="record-energy">
+          元気度
+        </label>
         <select
           id="record-energy"
           className="input"
@@ -177,13 +195,17 @@ export function RecordForm({
           onChange={(event) => setForm((current) => ({ ...current, energyLevel: event.target.value as EnergyLevel }))}
         >
           {energyOptions.map((option) => (
-            <option key={option} value={option}>{option}</option>
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
         </select>
       </div>
 
       <div>
-        <label className="label" htmlFor="record-poop">うんち状態</label>
+        <label className="label" htmlFor="record-poop">
+          うんち状態
+        </label>
         <select
           id="record-poop"
           className="input"
@@ -191,13 +213,17 @@ export function RecordForm({
           onChange={(event) => setForm((current) => ({ ...current, poopCondition: event.target.value as PoopCondition }))}
         >
           {poopOptions.map((option) => (
-            <option key={option} value={option}>{option}</option>
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
         </select>
       </div>
 
       <div>
-        <label className="label" htmlFor="record-photo">写真URL</label>
+        <label className="label" htmlFor="record-photo">
+          写真URL
+        </label>
         <input
           id="record-photo"
           className="input"
@@ -205,19 +231,17 @@ export function RecordForm({
           placeholder="https://example.com/photo.jpg"
           value={form.photoUrl.startsWith("data:image/") ? "" : form.photoUrl}
           onChange={(event) => {
-            const value = event.target.value;
             setSelectedFileName("");
             setImageMessage("");
-            setForm((current) => ({ ...current, photoUrl: value }));
+            setForm((current) => ({ ...current, photoUrl: event.target.value }));
           }}
         />
-        <p className="mt-2 text-xs leading-5 text-ink/55">
-          URL入力か端末画像のどちらかで保存できます。
-        </p>
       </div>
 
       <div>
-        <label className="label" htmlFor="record-photo-file">端末から写真を追加</label>
+        <label className="label" htmlFor="record-photo-file">
+          端末から写真を追加
+        </label>
         <input
           id="record-photo-file"
           className="input file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
@@ -225,45 +249,30 @@ export function RecordForm({
           accept="image/*,.heic,.heif"
           onChange={handleImageChange}
         />
-        <p className="mt-2 text-xs leading-5 text-ink/55">
-          2MBまでの画像を保存できます。HEIC / HEIF は自動でJPEGに変換して保存します。
-        </p>
-        {selectedFileName ? (
-          <p className="mt-2 text-xs text-ink/60">選択中: {selectedFileName}</p>
-        ) : null}
+        {selectedFileName ? <p className="mt-2 text-xs text-ink/60">選択中: {selectedFileName}</p> : null}
         {imageMessage ? <p className="mt-2 text-xs text-moss">{imageMessage}</p> : null}
         {form.photoUrl ? (
           <div className="mt-3 overflow-hidden rounded-3xl border border-sand bg-white">
-            <img src={form.photoUrl} alt="選択した写真のプレビュー" className="h-44 w-full object-cover" />
+            <img src={form.photoUrl} alt="記録写真のプレビュー" className="h-44 w-full object-cover" />
           </div>
         ) : null}
       </div>
 
       <div>
-        <label className="label" htmlFor="record-memo">メモ</label>
+        <label className="label" htmlFor="record-memo">
+          メモ
+        </label>
         <textarea
           id="record-memo"
           className="input min-h-28 resize-none"
-          placeholder="今日の様子をひとこと"
           value={form.memo}
           onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))}
         />
       </div>
 
-      <button className="button-primary w-full" type="submit">{submitLabel}</button>
-      {form.photoUrl ? (
-        <button
-          type="button"
-          className="button-secondary w-full"
-          onClick={() => {
-            setSelectedFileName("");
-            setImageMessage("");
-            setForm((current) => ({ ...current, photoUrl: "" }));
-          }}
-        >
-          写真を削除
-        </button>
-      ) : null}
+      <button className="button-primary w-full" type="submit">
+        {submitLabel}
+      </button>
     </form>
   );
 }
