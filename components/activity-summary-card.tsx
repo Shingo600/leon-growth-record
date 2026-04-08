@@ -1,46 +1,66 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppData } from "@/components/app-provider";
-import { ActivityCategory, ActivityKind, ActivityRecord, DailyGoals } from "@/lib/types";
+import { buildActivityItems, getActivityCompletionRate, type ActivityItem } from "@/lib/activity";
+import type { ActivityRecord, DailyGoals } from "@/lib/types";
 
-type ActivityItem = {
-  key: string;
-  label: string;
-  category: ActivityCategory;
-  quickKind: ActivityKind;
-  current: number;
-  goal: number;
-};
+function EditMinutesRow({
+  item,
+  onSave,
+  onCancel
+}: {
+  item: ActivityItem;
+  onSave: (minutes: number) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(`${item.current}`);
 
-function getNowTime() {
-  const now = new Date();
-  return `${`${now.getHours()}`.padStart(2, "0")}:${`${now.getMinutes()}`.padStart(2, "0")}`;
-}
-
-function getStatus(current: number, goal: number) {
-  if (current <= 0) {
-    return "未入力";
-  }
-
-  if (current < goal) {
-    return "進行中";
-  }
-
-  return "達成";
+  return (
+    <div className="mt-3 rounded-2xl bg-white/80 p-3">
+      <label className="label" htmlFor={`activity-edit-${item.key}`}>
+        分数を直接修正
+      </label>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          id={`activity-edit-${item.key}`}
+          className="input flex-1"
+          type="number"
+          min="0"
+          inputMode="numeric"
+          value={value}
+          onChange={(event) => setValue(event.target.value.replace(/[^\d]/g, ""))}
+        />
+        <button type="button" className="button-secondary px-4 py-2 text-sm" onClick={onCancel}>
+          閉じる
+        </button>
+        <button
+          type="button"
+          className="button-primary px-4 py-2 text-sm"
+          onClick={() => onSave(Number(value || 0))}
+        >
+          保存
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function ActivityRow({
   item,
-  onAddMinutes,
-  onComplete
+  today,
+  editingKey,
+  onStartEdit,
+  onFinishEdit
 }: {
   item: ActivityItem;
-  onAddMinutes: (item: ActivityItem, minutes: number) => void;
-  onComplete: (item: ActivityItem) => void;
+  today: string;
+  editingKey: string | null;
+  onStartEdit: (key: string) => void;
+  onFinishEdit: () => void;
 }) {
-  const remaining = Math.max(item.goal - item.current, 0);
-  const progress = item.goal > 0 ? Math.min((item.current / item.goal) * 100, 100) : 0;
+  const { incrementActivity, decrementActivity, setActivityMinutes, completeActivity, resetActivity } = useAppData();
+  const isEditing = editingKey === item.key;
 
   return (
     <div className="rounded-3xl bg-cream/70 p-4">
@@ -48,35 +68,87 @@ function ActivityRow({
         <div>
           <p className="text-base font-semibold">{item.label}</p>
           <p className="mt-1 text-sm text-ink/65">
-            今日 {item.current}分 / 目標 {item.goal}分
+            今日の実績 {item.current}分 / 目標{item.goal}分
           </p>
-          <p className="mt-1 text-sm text-ink/65">あと {remaining}分</p>
+          <p className="mt-1 text-sm text-ink/65">あと {item.remaining}分</p>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink/70">
-          {getStatus(item.current, item.goal)}
-        </span>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-ink/70">{item.status}</span>
       </div>
 
       <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/80">
-        <div className="h-full rounded-full bg-warm transition-all" style={{ width: `${progress}%` }} />
+        <div className="h-full rounded-full bg-warm transition-all" style={{ width: `${item.progress}%` }} />
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <button type="button" className="button-secondary w-full px-3 py-2 text-sm" onClick={() => onAddMinutes(item, 5)}>
+      <div className="mt-4 grid grid-cols-5 gap-2">
+        <button
+          type="button"
+          className="button-secondary w-full px-2 py-2 text-sm"
+          onClick={() => decrementActivity(today, item.category, item.quickKind, 10)}
+        >
+          -10分
+        </button>
+        <button
+          type="button"
+          className="button-secondary w-full px-2 py-2 text-sm"
+          onClick={() => decrementActivity(today, item.category, item.quickKind, 5)}
+        >
+          -5分
+        </button>
+        <button
+          type="button"
+          className="button-secondary w-full px-2 py-2 text-sm"
+          onClick={() => incrementActivity(today, item.category, item.quickKind, 5)}
+        >
           +5分
         </button>
-        <button type="button" className="button-secondary w-full px-3 py-2 text-sm" onClick={() => onAddMinutes(item, 10)}>
+        <button
+          type="button"
+          className="button-secondary w-full px-2 py-2 text-sm"
+          onClick={() => incrementActivity(today, item.category, item.quickKind, 10)}
+        >
           +10分
         </button>
         <button
           type="button"
-          className="button-primary w-full px-3 py-2 text-sm disabled:cursor-default disabled:opacity-45"
-          onClick={() => onComplete(item)}
-          disabled={remaining <= 0}
+          className="button-primary w-full px-2 py-2 text-sm"
+          onClick={() => completeActivity(today, item.category, item.quickKind, item.goal)}
         >
           完了
         </button>
       </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className="button-secondary w-full px-3 py-2 text-sm"
+          onClick={() => onStartEdit(item.key)}
+        >
+          編集
+        </button>
+        <button
+          type="button"
+          className="button-secondary w-full px-3 py-2 text-sm"
+          onClick={() => {
+            if (window.confirm(`${item.label}を0分に戻しますか？`)) {
+              resetActivity(today, item.category, item.quickKind);
+              onFinishEdit();
+            }
+          }}
+        >
+          リセット
+        </button>
+      </div>
+
+      {isEditing ? (
+        <EditMinutesRow
+          item={item}
+          onCancel={onFinishEdit}
+          onSave={(minutes) => {
+            setActivityMinutes(today, item.category, item.quickKind, minutes);
+            onFinishEdit();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -90,62 +162,9 @@ export function ActivitySummaryCard({
   goals: DailyGoals;
   today: string;
 }) {
-  const { addActivityRecord } = useAppData();
-
-  const items = useMemo<ActivityItem[]>(() => {
-    const todayRecords = activityRecords.filter((item) => item.date === today);
-    const walkMinutes = todayRecords
-      .filter((item) => item.category === "散歩")
-      .reduce((sum, item) => sum + item.durationMinutes, 0);
-    const intelligenceMinutes = todayRecords
-      .filter((item) => item.category === "知育遊び")
-      .reduce((sum, item) => sum + item.durationMinutes, 0);
-    const trainingMinutes = todayRecords
-      .filter((item) => item.category === "トレーニング")
-      .reduce((sum, item) => sum + item.durationMinutes, 0);
-
-    return [
-      { key: "walk", label: "散歩", category: "散歩", quickKind: "散歩", current: walkMinutes, goal: goals.walkMinutes },
-      {
-        key: "intelligence",
-        label: "知育遊び",
-        category: "知育遊び",
-        quickKind: "ノーズワーク",
-        current: intelligenceMinutes,
-        goal: goals.intelligenceMinutes
-      },
-      {
-        key: "training",
-        label: "トレーニング",
-        category: "トレーニング",
-        quickKind: "コマンド練習",
-        current: trainingMinutes,
-        goal: goals.trainingMinutes
-      }
-    ];
-  }, [activityRecords, goals, today]);
-
-  const totalRate = Math.round(
-    (items.reduce((sum, item) => sum + Math.min(item.current / item.goal, 1), 0) / items.length) * 100
-  );
-
-  function addMinutes(item: ActivityItem, minutes: number) {
-    addActivityRecord({
-      date: today,
-      startTime: getNowTime(),
-      durationMinutes: minutes,
-      category: item.category,
-      kind: item.quickKind,
-      memo: ""
-    });
-  }
-
-  function completeItem(item: ActivityItem) {
-    const remaining = Math.max(item.goal - item.current, 0);
-    if (remaining > 0) {
-      addMinutes(item, remaining);
-    }
-  }
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const items = useMemo(() => buildActivityItems(activityRecords, goals, today), [activityRecords, goals, today]);
+  const totalRate = getActivityCompletionRate(items);
 
   return (
     <section className="card space-y-4 p-5">
@@ -162,7 +181,14 @@ export function ActivitySummaryCard({
 
       <div className="space-y-3">
         {items.map((item) => (
-          <ActivityRow key={item.key} item={item} onAddMinutes={addMinutes} onComplete={completeItem} />
+          <ActivityRow
+            key={item.key}
+            item={item}
+            today={today}
+            editingKey={editingKey}
+            onStartEdit={setEditingKey}
+            onFinishEdit={() => setEditingKey(null)}
+          />
         ))}
       </div>
     </section>

@@ -2,10 +2,13 @@
 
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { getCurrentActivityMinutes } from "@/lib/activity";
 import { defaultAppData } from "@/lib/dummy-data";
 import { loadAppData, saveAppData } from "@/lib/storage";
 import { fetchCloudAppData, isSupabaseConfigured, saveCloudAppData } from "@/lib/supabase";
 import {
+  ActivityCategory,
+  ActivityKind,
   ActivityRecord,
   AppData,
   CalendarEvent,
@@ -55,6 +58,11 @@ type AppContextValue = {
   updateHealthRecord: (id: string, record: HealthRecordInput) => void;
   deleteHealthRecord: (id: string) => void;
   addActivityRecord: (record: ActivityRecordInput) => void;
+  incrementActivity: (date: string, category: ActivityCategory, kind: ActivityKind, minutes: number) => void;
+  decrementActivity: (date: string, category: ActivityCategory, kind: ActivityKind, minutes: number) => void;
+  setActivityMinutes: (date: string, category: ActivityCategory, kind: ActivityKind, minutes: number) => void;
+  completeActivity: (date: string, category: ActivityCategory, kind: ActivityKind, goalMinutes: number) => void;
+  resetActivity: (date: string, category: ActivityCategory, kind: ActivityKind) => void;
   addMealRecord: (record: MealRecordInput) => void;
   updateMealRecord: (id: string, record: MealRecordInput) => void;
   deleteMealRecord: (id: string) => void;
@@ -83,6 +91,29 @@ function getInitialData(): AppData {
 
 function getProfileWeight(records: GrowthRecord[], currentWeight: number) {
   return records[0]?.taijyuu ?? currentWeight;
+}
+
+function getNowTime() {
+  const now = new Date();
+  return `${`${now.getHours()}`.padStart(2, "0")}:${`${now.getMinutes()}`.padStart(2, "0")}`;
+}
+
+function buildActivityAdjustment(
+  date: string,
+  category: ActivityCategory,
+  kind: ActivityKind,
+  minutes: number
+): ActivityRecord {
+  return {
+    id: createId("activity"),
+    date,
+    startTime: getNowTime(),
+    durationMinutes: minutes,
+    category,
+    kind,
+    memo: "",
+    createdAt: new Date().toISOString()
+  };
 }
 
 function hasMeaningfulData(appData: AppData) {
@@ -366,6 +397,97 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ...current.activityRecords
           ])
         }));
+      },
+      incrementActivity(date, category, kind, minutes) {
+        if (minutes <= 0) {
+          return;
+        }
+
+        setData((current) => ({
+          ...current,
+          activityRecords: sortActivityRecords([
+            buildActivityAdjustment(date, category, kind, minutes),
+            ...current.activityRecords
+          ])
+        }));
+      },
+      decrementActivity(date, category, kind, minutes) {
+        if (minutes <= 0) {
+          return;
+        }
+
+        setData((current) => {
+          const currentMinutes = getCurrentActivityMinutes(current.activityRecords, date, category);
+          const nextMinutes = Math.max(currentMinutes - minutes, 0);
+          const diff = nextMinutes - currentMinutes;
+
+          if (diff === 0) {
+            return current;
+          }
+
+          return {
+            ...current,
+            activityRecords: sortActivityRecords([
+              buildActivityAdjustment(date, category, kind, diff),
+              ...current.activityRecords
+            ])
+          };
+        });
+      },
+      setActivityMinutes(date, category, kind, minutes) {
+        const safeMinutes = Math.max(minutes, 0);
+
+        setData((current) => {
+          const currentMinutes = getCurrentActivityMinutes(current.activityRecords, date, category);
+          const diff = safeMinutes - currentMinutes;
+
+          if (diff === 0) {
+            return current;
+          }
+
+          return {
+            ...current,
+            activityRecords: sortActivityRecords([
+              buildActivityAdjustment(date, category, kind, diff),
+              ...current.activityRecords
+            ])
+          };
+        });
+      },
+      completeActivity(date, category, kind, goalMinutes) {
+        const safeGoal = Math.max(goalMinutes, 0);
+        setData((current) => {
+          const currentMinutes = getCurrentActivityMinutes(current.activityRecords, date, category);
+          const diff = safeGoal - currentMinutes;
+
+          if (diff === 0) {
+            return current;
+          }
+
+          return {
+            ...current,
+            activityRecords: sortActivityRecords([
+              buildActivityAdjustment(date, category, kind, diff),
+              ...current.activityRecords
+            ])
+          };
+        });
+      },
+      resetActivity(date, category, kind) {
+        setData((current) => {
+          const currentMinutes = getCurrentActivityMinutes(current.activityRecords, date, category);
+          if (currentMinutes === 0) {
+            return current;
+          }
+
+          return {
+            ...current,
+            activityRecords: sortActivityRecords([
+              buildActivityAdjustment(date, category, kind, -currentMinutes),
+              ...current.activityRecords
+            ])
+          };
+        });
       },
       addMealRecord(record) {
         setData((current) => ({

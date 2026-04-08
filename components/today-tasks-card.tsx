@@ -13,14 +13,14 @@ export function TodayTasksCard({ tasks }: { tasks: TodayTask[] }) {
 
       {tasks.length === 0 ? (
         <p className="rounded-3xl bg-cream px-4 py-4 text-sm leading-6 text-ink/75">
-          今日は目標をすべて達成です。レオンもきっとごきげんです。
+          今日はぜんぶ達成！レオンえらい！
         </p>
       ) : (
         <div className="space-y-3">
           {tasks.map((task) => (
             <div key={task.label} className="rounded-3xl bg-cream px-4 py-4">
               <p className="text-sm font-semibold">{task.label}</p>
-              <p className="mt-1 text-sm text-ink/65">あと {task.remaining}分 で今日の目標です</p>
+              <p className="mt-1 text-sm text-ink/65">あと {task.remaining}分で今日の目標達成です。</p>
             </div>
           ))}
         </div>
