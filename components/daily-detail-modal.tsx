@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ActivitySummaryCard } from "@/components/activity-summary-card";
 import { CalendarEventModal } from "@/components/calendar-event-modal";
 import { HealthForm } from "@/components/health-form";
@@ -33,6 +33,15 @@ function SectionHeader({
   );
 }
 
+function SummaryChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white px-3 py-3">
+      <p className="text-xs text-ink/55">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-ink/85">{value}</p>
+    </div>
+  );
+}
+
 export function DailyDetailModal({
   date,
   onClose
@@ -40,8 +49,15 @@ export function DailyDetailModal({
   date: string | null;
   onClose: () => void;
 }) {
-  const { data, addRecord, updateRecord, deleteRecord, addHealthRecord, updateHealthRecord, deleteHealthRecord } =
-    useAppData();
+  const {
+    data,
+    addRecord,
+    updateRecord,
+    deleteRecord,
+    addHealthRecord,
+    updateHealthRecord,
+    deleteHealthRecord
+  } = useAppData();
   const [editingRecord, setEditingRecord] = useState<GrowthRecord | null>(null);
   const [editingHealth, setEditingHealth] = useState<HealthRecord | null>(null);
   const [eventModalDate, setEventModalDate] = useState<string | null>(null);
@@ -56,48 +72,78 @@ export function DailyDetailModal({
   }
 
   const daily = getDailyData(data, date);
+  const totalMealGrams = daily.meals.reduce((sum, meal) => sum + meal.grams * (1 - meal.leftoverRate / 100), 0);
+  const activeItems = daily.activityItems.filter((item) => item.current > 0);
+  const summaryLine = useMemo(() => {
+    if (daily.record) {
+      return `${daily.record.energyLevel} / 食欲 ${daily.record.appetite} / 活動達成率 ${daily.activityRate}%`;
+    }
+
+    if (daily.meals.length || activeItems.length || daily.events.length || daily.healthRecords.length) {
+      return `ごはん ${daily.meals.length}件 / 活動 ${daily.activityRate}% / 健康 ${daily.healthRecords.length}件 / 予定 ${daily.events.length}件`;
+    }
+
+    return "この日はまだ記録がありません。";
+  }, [activeItems.length, daily]);
 
   return (
     <>
       <ModalShell title={`${formatDate(date, { year: "numeric", month: "numeric", day: "numeric" })} の記録`} onClose={onClose} size="lg">
         <div className="space-y-5">
+          <section className="rounded-[2rem] bg-cream p-4">
+            <div className="flex items-start gap-4">
+              <div className="h-24 w-24 shrink-0 overflow-hidden rounded-3xl bg-white">
+                <img
+                  src={daily.record?.photoUrl || data.profile.photoUrl || "/placeholder-dog.svg"}
+                  alt={`${date}の写真`}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-ink/60">1日のふり返り</p>
+                <h4 className="mt-1 text-xl font-semibold">{formatDate(date, { month: "numeric", day: "numeric", weekday: "short" })}</h4>
+                <p className="mt-2 rounded-2xl bg-white px-3 py-3 text-sm leading-6 text-ink/75">{summaryLine}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <SummaryChip label="体重" value={daily.record ? `${daily.record.taijyuu.toFixed(1)}kg` : "未入力"} />
+              <SummaryChip label="ごはん" value={daily.meals.length > 0 ? `${Math.round(totalMealGrams)}g` : "未記録"} />
+              <SummaryChip label="活動" value={`${daily.activityRate}%`} />
+              <SummaryChip label="予定 / 健康" value={`${daily.events.length} / ${daily.healthRecords.length}`} />
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <button type="button" className="button-secondary w-full px-3 py-2 text-sm" onClick={() => setCreatingRecord(true)}>
+                成長記録を追加
+              </button>
+              <button type="button" className="button-secondary w-full px-3 py-2 text-sm" onClick={() => setMealModalDate(date)}>
+                ごはんを追加
+              </button>
+              <button type="button" className="button-secondary w-full px-3 py-2 text-sm" onClick={() => setCreatingHealth(true)}>
+                健康を追加
+              </button>
+              <button type="button" className="button-secondary w-full px-3 py-2 text-sm" onClick={() => setEventModalDate(date)}>
+                予定を追加
+              </button>
+            </div>
+          </section>
+
           <section className="rounded-3xl bg-cream p-4">
-            <h4 className="text-base font-semibold">その日のサマリー</h4>
+            <SectionHeader title="その日のサマリー" actionLabel={daily.record ? "編集" : "追加"} onAction={() => (daily.record ? setEditingRecord(daily.record) : setCreatingRecord(true))} />
             {daily.record ? (
               <div className="mt-3 space-y-3">
-                {daily.record.photoUrl ? (
-                  <div className="overflow-hidden rounded-3xl bg-white">
-                    <img src={daily.record.photoUrl} alt={`${date}の写真`} className="h-40 w-full object-cover" />
-                  </div>
-                ) : null}
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-2xl bg-white px-3 py-3">
-                    <p className="text-xs text-ink/55">体重</p>
-                    <p className="mt-1 font-semibold">{daily.record.taijyuu.toFixed(1)}kg</p>
-                  </div>
-                  <div className="rounded-2xl bg-white px-3 py-3">
-                    <p className="text-xs text-ink/55">食欲</p>
-                    <p className="mt-1 font-semibold">{daily.record.appetite}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white px-3 py-3">
-                    <p className="text-xs text-ink/55">元気度</p>
-                    <p className="mt-1 font-semibold">{daily.record.energyLevel}</p>
-                  </div>
-                  <div className="rounded-2xl bg-white px-3 py-3">
-                    <p className="text-xs text-ink/55">うんち状態</p>
-                    <p className="mt-1 font-semibold">{daily.record.poopCondition}</p>
-                  </div>
+                  <SummaryChip label="体重" value={`${daily.record.taijyuu.toFixed(1)}kg`} />
+                  <SummaryChip label="食欲" value={daily.record.appetite} />
+                  <SummaryChip label="元気度" value={daily.record.energyLevel} />
+                  <SummaryChip label="うんち状態" value={daily.record.poopCondition} />
                 </div>
-                <p className="rounded-2xl bg-white px-3 py-3 text-sm leading-6 text-ink/75">
-                  {daily.record.memo || "メモはありません"}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" className="button-secondary w-full" onClick={() => setEditingRecord(daily.record)}>
-                    編集
-                  </button>
+                <p className="rounded-2xl bg-white px-3 py-3 text-sm leading-6 text-ink/75">{daily.record.memo || "メモはありません"}</p>
+                <div className="flex justify-end">
                   <button
                     type="button"
-                    className="button-secondary w-full"
+                    className="text-sm text-ink/55"
                     onClick={() => {
                       if (window.confirm("この成長記録を削除しますか？")) {
                         deleteRecord(daily.record!.id);
@@ -109,12 +155,7 @@ export function DailyDetailModal({
                 </div>
               </div>
             ) : (
-              <div className="mt-3 space-y-3">
-                <p className="rounded-2xl bg-white px-3 py-3 text-sm text-ink/65">成長記録はまだありません。</p>
-                <button type="button" className="button-secondary w-full" onClick={() => setCreatingRecord(true)}>
-                  成長記録を追加
-                </button>
-              </div>
+              <p className="mt-3 rounded-2xl bg-white px-3 py-3 text-sm text-ink/65">成長記録はまだありません。</p>
             )}
           </section>
 
@@ -131,12 +172,15 @@ export function DailyDetailModal({
                       className="w-full rounded-3xl bg-cream px-4 py-4 text-left"
                       onClick={() => setEditingMeal(meal)}
                     >
-                      <p className="text-sm font-semibold">
-                        {meal.mealType} {meal.time}
-                      </p>
-                      <p className="mt-1 text-sm text-ink/70">
-                        {food?.productName ?? "フード未登録"} / {meal.grams}g / 食べ残し {meal.leftoverRate}%
-                      </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-semibold">
+                          {meal.mealType} {meal.time}
+                        </p>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-ink/65">
+                          {meal.leftoverRate === 0 ? "完食" : `${meal.leftoverRate}%残し`}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-ink/70">{food?.productName ?? "フード未登録"} / {meal.grams}g</p>
                       {meal.memo ? <p className="mt-2 text-sm text-ink/65">{meal.memo}</p> : null}
                     </button>
                   );
@@ -168,6 +212,7 @@ export function DailyDetailModal({
                       </button>
                     </div>
                     {record.doctorNote ? <p className="mt-2 text-sm text-ink/65">{record.doctorNote}</p> : null}
+                    {record.nextDueDate ? <p className="mt-2 text-sm text-ink/55">次回予定日: {formatDate(record.nextDueDate)}</p> : null}
                     <div className="mt-3 flex justify-end">
                       <button
                         type="button"
