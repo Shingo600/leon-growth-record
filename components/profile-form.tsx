@@ -3,10 +3,10 @@
 import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { useAppData } from "@/components/app-provider";
-import { DogGender } from "@/lib/types";
+import { prepareImageForStorage } from "@/lib/image-client";
+import type { DogGender } from "@/lib/types";
 
 const genderOptions: DogGender[] = ["オス", "メス", "不明"];
-const maxFileSize = 1024 * 1024 * 2;
 
 type ProfileFormState = {
   name: string;
@@ -38,48 +38,9 @@ function createFormState(data: ReturnType<typeof useAppData>["data"]): ProfileFo
   };
 }
 
-function getFileExtension(fileName: string) {
-  const lowerName = fileName.toLowerCase();
-  const dotIndex = lowerName.lastIndexOf(".");
-  return dotIndex >= 0 ? lowerName.slice(dotIndex) : "";
-}
-
-function isHeicFile(file: File) {
-  const extension = getFileExtension(file.name);
-  return extension === ".heic" || extension === ".heif" || file.type === "image/heic" || file.type === "image/heif";
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
-    reader.readAsDataURL(file);
-  });
-}
-
-async function convertHeicToJpeg(file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const response = await fetch("/api/convert-heic", {
-    method: "POST",
-    body: formData
-  });
-
-  if (!response.ok) {
-    throw new Error("HEIC conversion failed");
-  }
-
-  return (await response.json()) as {
-    dataUrl: string;
-    fileName: string;
-  };
-}
-
 export function ProfileForm() {
   const app = useAppData();
-  const { data, updateProfile } = app;
+  const { updateProfile } = app;
   const [savedMessage, setSavedMessage] = useState("");
   const [imageMessage, setImageMessage] = useState("");
   const [selectedFileName, setSelectedFileName] = useState("");
@@ -91,31 +52,17 @@ export function ProfileForm() {
 
   async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-
     if (!file) {
       return;
     }
 
-    if (file.size > maxFileSize) {
-      setImageMessage("画像サイズは2MB以下にしてください。");
-      setSelectedFileName(file.name);
-      return;
-    }
-
     try {
-      if (isHeicFile(file)) {
-        const converted = await convertHeicToJpeg(file);
-        setForm((current) => ({ ...current, photoUrl: converted.dataUrl }));
-        setSelectedFileName(converted.fileName);
-        setImageMessage("HEIC画像をJPEGに変換してセットしました。保存すると反映されます。");
-      } else {
-        const dataUrl = await readFileAsDataUrl(file);
-        setForm((current) => ({ ...current, photoUrl: dataUrl }));
-        setSelectedFileName(file.name);
-        setImageMessage("プロフィール画像をセットしました。保存すると反映されます。");
-      }
-    } catch {
-      setImageMessage("画像の読み込みに失敗しました。");
+      const prepared = await prepareImageForStorage(file);
+      setForm((current) => ({ ...current, photoUrl: prepared.dataUrl }));
+      setSelectedFileName(prepared.fileName);
+      setImageMessage(prepared.message);
+    } catch (error) {
+      setImageMessage(error instanceof Error ? error.message : "画像の読み込みに失敗しました。");
       setSelectedFileName("");
     } finally {
       event.target.value = "";
@@ -147,7 +94,9 @@ export function ProfileForm() {
       }}
     >
       <div>
-        <label className="label" htmlFor="profile-photo-url">プロフィール写真URL</label>
+        <label className="label" htmlFor="profile-photo-url">
+          プロフィール写真URL
+        </label>
         <input
           id="profile-photo-url"
           className="input"
@@ -163,7 +112,9 @@ export function ProfileForm() {
       </div>
 
       <div>
-        <label className="label" htmlFor="profile-photo-file">端末からプロフィール写真を追加</label>
+        <label className="label" htmlFor="profile-photo-file">
+          端末からプロフィール写真を追加
+        </label>
         <input
           id="profile-photo-file"
           className="input file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
@@ -172,7 +123,7 @@ export function ProfileForm() {
           onChange={handleImageChange}
         />
         <p className="mt-2 text-xs leading-5 text-ink/55">
-          2MBまでの画像を保存できます。HEIC / HEIF は自動でJPEGに変換して保存します。
+          スマホで撮った大きめの写真も、アプリ側で自動的に軽くしてから保存します。
         </p>
         {selectedFileName ? <p className="mt-2 text-xs text-ink/60">選択中: {selectedFileName}</p> : null}
         {imageMessage ? <p className="mt-2 text-xs text-moss">{imageMessage}</p> : null}
@@ -184,7 +135,9 @@ export function ProfileForm() {
       </div>
 
       <div>
-        <label className="label" htmlFor="profile-name">名前</label>
+        <label className="label" htmlFor="profile-name">
+          名前
+        </label>
         <input
           id="profile-name"
           className="input"
@@ -195,7 +148,9 @@ export function ProfileForm() {
       </div>
 
       <div>
-        <label className="label" htmlFor="profile-breed">犬種</label>
+        <label className="label" htmlFor="profile-breed">
+          犬種
+        </label>
         <input
           id="profile-breed"
           className="input"
@@ -206,7 +161,9 @@ export function ProfileForm() {
       </div>
 
       <div>
-        <label className="label" htmlFor="profile-birthday">誕生日</label>
+        <label className="label" htmlFor="profile-birthday">
+          誕生日
+        </label>
         <input
           id="profile-birthday"
           className="input date-input"
@@ -218,7 +175,9 @@ export function ProfileForm() {
       </div>
 
       <div>
-        <label className="label" htmlFor="profile-gender">性別</label>
+        <label className="label" htmlFor="profile-gender">
+          性別
+        </label>
         <select
           id="profile-gender"
           className="input"
@@ -226,13 +185,17 @@ export function ProfileForm() {
           onChange={(event) => setForm((current) => ({ ...current, gender: event.target.value as DogGender }))}
         >
           {genderOptions.map((option) => (
-            <option key={option} value={option}>{option}</option>
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
         </select>
       </div>
 
       <div>
-        <label className="label" htmlFor="profile-arrival-date">お迎え日</label>
+        <label className="label" htmlFor="profile-arrival-date">
+          お迎え日
+        </label>
         <input
           id="profile-arrival-date"
           className="input date-input"
@@ -244,7 +207,9 @@ export function ProfileForm() {
       </div>
 
       <div>
-        <label className="label" htmlFor="profile-current-weight">現在体重</label>
+        <label className="label" htmlFor="profile-current-weight">
+          現在体重
+        </label>
         <input
           id="profile-current-weight"
           className="input"
@@ -260,13 +225,13 @@ export function ProfileForm() {
       <div className="space-y-4 rounded-3xl bg-cream px-4 py-4">
         <div>
           <p className="text-sm font-semibold text-ink">毎日の目標</p>
-          <p className="mt-1 text-xs leading-5 text-ink/60">
-            ホームの活動サマリーで使う目標値です。日々のペースに合わせて調整できます。
-          </p>
+          <p className="mt-1 text-xs leading-5 text-ink/60">ホームの活動サマリーで使う目標分です。</p>
         </div>
 
         <div>
-          <label className="label" htmlFor="profile-walk-goal">散歩目標（分）</label>
+          <label className="label" htmlFor="profile-walk-goal">
+            散歩目標（分）
+          </label>
           <input
             id="profile-walk-goal"
             className="input"
@@ -280,7 +245,9 @@ export function ProfileForm() {
         </div>
 
         <div>
-          <label className="label" htmlFor="profile-intelligence-goal">知育遊び目標（分）</label>
+          <label className="label" htmlFor="profile-intelligence-goal">
+            知育遊び目標（分）
+          </label>
           <input
             id="profile-intelligence-goal"
             className="input"
@@ -294,7 +261,9 @@ export function ProfileForm() {
         </div>
 
         <div>
-          <label className="label" htmlFor="profile-training-goal">トレーニング目標（分）</label>
+          <label className="label" htmlFor="profile-training-goal">
+            トレーニング目標（分）
+          </label>
           <input
             id="profile-training-goal"
             className="input"
@@ -309,17 +278,21 @@ export function ProfileForm() {
       </div>
 
       <div>
-        <label className="label" htmlFor="profile-catch-phrase">ひとことメッセージ</label>
+        <label className="label" htmlFor="profile-catch-phrase">
+          ひとことメッセージ
+        </label>
         <textarea
           id="profile-catch-phrase"
           className="input min-h-24 resize-none"
           value={form.catchPhrase}
           onChange={(event) => setForm((current) => ({ ...current, catchPhrase: event.target.value }))}
-          placeholder="今日はどんな発見があるかな"
+          placeholder="今日もやさしく見守ろう"
         />
       </div>
 
-      <button className="button-primary w-full" type="submit">プロフィールを保存</button>
+      <button className="button-primary w-full" type="submit">
+        プロフィールを保存
+      </button>
       {form.photoUrl ? (
         <button
           type="button"

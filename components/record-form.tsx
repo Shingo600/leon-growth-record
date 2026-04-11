@@ -4,52 +4,13 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppData } from "@/components/app-provider";
+import { prepareImageForStorage } from "@/lib/image-client";
 import type { Appetite, EnergyLevel, GrowthRecord, PoopCondition } from "@/lib/types";
 import { getTodayDateString } from "@/lib/utils";
 
 const appetiteOptions: Appetite[] = ["良い", "普通", "悪い"];
 const energyOptions: EnergyLevel[] = ["元気", "普通", "元気なし"];
 const poopOptions: PoopCondition[] = ["良い", "柔らかい", "下痢"];
-const maxFileSize = 1024 * 1024 * 2;
-
-function getFileExtension(fileName: string) {
-  const lowerName = fileName.toLowerCase();
-  const dotIndex = lowerName.lastIndexOf(".");
-  return dotIndex >= 0 ? lowerName.slice(dotIndex) : "";
-}
-
-function isHeicFile(file: File) {
-  const extension = getFileExtension(file.name);
-  return extension === ".heic" || extension === ".heif" || file.type === "image/heic" || file.type === "image/heif";
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(new Error("画像の読み込みに失敗しました"));
-    reader.readAsDataURL(file);
-  });
-}
-
-async function convertHeicToJpeg(file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const response = await fetch("/api/convert-heic", {
-    method: "POST",
-    body: formData
-  });
-
-  if (!response.ok) {
-    throw new Error("HEIC conversion failed");
-  }
-
-  return (await response.json()) as {
-    dataUrl: string;
-    fileName: string;
-  };
-}
 
 type RecordFormProps = {
   initialRecord?: GrowthRecord;
@@ -84,31 +45,17 @@ export function RecordForm({
 
   async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-
     if (!file) {
       return;
     }
 
-    if (file.size > maxFileSize) {
-      setImageMessage("画像サイズは2MB以下にしてください。");
-      setSelectedFileName(file.name);
-      return;
-    }
-
     try {
-      if (isHeicFile(file)) {
-        const converted = await convertHeicToJpeg(file);
-        setForm((current) => ({ ...current, photoUrl: converted.dataUrl }));
-        setSelectedFileName(converted.fileName);
-        setImageMessage("HEIC画像をJPEGに変換してセットしました。");
-      } else {
-        const dataUrl = await readFileAsDataUrl(file);
-        setForm((current) => ({ ...current, photoUrl: dataUrl }));
-        setSelectedFileName(file.name);
-        setImageMessage("端末画像をセットしました。");
-      }
-    } catch {
-      setImageMessage("画像の読み込みに失敗しました。");
+      const prepared = await prepareImageForStorage(file);
+      setForm((current) => ({ ...current, photoUrl: prepared.dataUrl }));
+      setSelectedFileName(prepared.fileName);
+      setImageMessage(prepared.message);
+    } catch (error) {
+      setImageMessage(error instanceof Error ? error.message : "画像の読み込みに失敗しました。");
       setSelectedFileName("");
     } finally {
       event.target.value = "";
@@ -249,6 +196,9 @@ export function RecordForm({
           accept="image/*,.heic,.heif"
           onChange={handleImageChange}
         />
+        <p className="mt-2 text-xs leading-5 text-ink/55">
+          スマホで撮った大きめの写真も、アプリ側で自動的に軽くしてから保存します。
+        </p>
         {selectedFileName ? <p className="mt-2 text-xs text-ink/60">選択中: {selectedFileName}</p> : null}
         {imageMessage ? <p className="mt-2 text-xs text-moss">{imageMessage}</p> : null}
         {form.photoUrl ? (
