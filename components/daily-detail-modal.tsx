@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ActivitySummaryCard } from "@/components/activity-summary-card";
 import { CalendarEventModal } from "@/components/calendar-event-modal";
 import { HealthForm } from "@/components/health-form";
@@ -66,25 +66,19 @@ export function DailyDetailModal({
   const [editingMeal, setEditingMeal] = useState<MealRecord | null>(null);
   const [creatingRecord, setCreatingRecord] = useState(false);
   const [creatingHealth, setCreatingHealth] = useState(false);
+  const safeDate = date ?? "";
+  const daily = getDailyData(data, safeDate);
+  const totalMealGrams = daily.meals.reduce((sum, meal) => sum + meal.grams * (1 - meal.leftoverRate / 100), 0);
+  const activeItems = daily.activityItems.filter((item) => item.current > 0);
+  const summaryLine = daily.record
+    ? `${daily.record.energyLevel} / 食欲 ${daily.record.appetite} / 活動達成率 ${daily.activityRate}%`
+    : daily.meals.length || activeItems.length || daily.events.length || daily.healthRecords.length
+      ? `ごはん ${daily.meals.length}件 / 活動 ${daily.activityRate}% / 健康 ${daily.healthRecords.length}件 / 予定 ${daily.events.length}件`
+      : "この日はまだ記録がありません。";
 
   if (!date) {
     return null;
   }
-
-  const daily = getDailyData(data, date);
-  const totalMealGrams = daily.meals.reduce((sum, meal) => sum + meal.grams * (1 - meal.leftoverRate / 100), 0);
-  const activeItems = daily.activityItems.filter((item) => item.current > 0);
-  const summaryLine = useMemo(() => {
-    if (daily.record) {
-      return `${daily.record.energyLevel} / 食欲 ${daily.record.appetite} / 活動達成率 ${daily.activityRate}%`;
-    }
-
-    if (daily.meals.length || activeItems.length || daily.events.length || daily.healthRecords.length) {
-      return `ごはん ${daily.meals.length}件 / 活動 ${daily.activityRate}% / 健康 ${daily.healthRecords.length}件 / 予定 ${daily.events.length}件`;
-    }
-
-    return "この日はまだ記録がありません。";
-  }, [activeItems.length, daily]);
 
   return (
     <>
