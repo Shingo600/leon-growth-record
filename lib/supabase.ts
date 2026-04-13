@@ -1,32 +1,52 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { AppData } from "@/lib/types";
+import type { AppData } from "@/lib/types";
 import { normalizeAppData } from "@/lib/storage";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const workspaceId = process.env.NEXT_PUBLIC_LEON_WORKSPACE_ID;
-const tableName = "app_snapshots";
+const snapshotEndpoint = "/api/snapshot";
+const authEndpoint = "/api/snapshot/auth";
 
-let browserClient: SupabaseClient | null = null;
+export type CloudErrorCode = "not-configured" | "auth-required" | "request-failed";
 
-type CloudResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; message: string };
+type CloudSuccess<T> = {
+  ok: true;
+  data: T;
+};
 
-function sleep(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
+type CloudFailure = {
+  ok: false;
+  code: CloudErrorCode;
+  message: string;
+};
 
-function formatSupabaseError(message: string) {
-  if (message.toLowerCase().includes("statement timeout")) {
-    return "通信が混み合って保存に時間がかかりました。少し待ってから再度お試しください。";
+export type CloudResult<T> = CloudSuccess<T> | CloudFailure;
+
+function formatCloudError(message: string) {
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes("statement timeout")) {
+    return "同期処理が混み合っていました。少し待ってからもう一度お試しください。";
   }
 
-  if (message.toLowerCase().includes("network")) {
-    return "通信状態が不安定なため保存できませんでした。接続を確認して再度お試しください。";
+  if (lowerMessage.includes("network") || lowerMessage.includes("failed to fetch")) {
+    return "通信状態が安定しませんでした。接続を確認してから再度お試しください。";
   }
 
   return message;
+}
+
+function classifyResponse(status: number): CloudErrorCode {
+  if (status === 503) {
+    return "not-configured";
+  }
+
+  if (status === 401) {
+    return "auth-required";
+  }
+
+  return "request-failed";
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 async function withRetry<T>(task: () => Promise<CloudResult<T>>, retries = 1): Promise<CloudResult<T>> {
@@ -48,85 +68,106 @@ async function withRetry<T>(task: () => Promise<CloudResult<T>>, retries = 1): P
   return lastResult;
 }
 
-export function isSupabaseConfigured() {
-  return Boolean(supabaseUrl && supabaseAnonKey && workspaceId);
+async function parseMessage(response: Response) {
+  const body = (await response.json().catch(() => null)) as { message?: string; data?: unknown } | null;
+  return body?.message ?? response.statusText ?? "クラウド同期に失敗しました。";
 }
 
-export function getSupabaseWorkspaceId() {
-  return workspaceId ?? "";
-}
-
-export function getSupabaseBrowserClient() {
-  if (!isSupabaseConfigured()) {
-    return null;
-  }
-
-  if (!browserClient) {
-    browserClient = createClient(supabaseUrl!, supabaseAnonKey!, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false
-      }
-    });
-  }
-
-  return browserClient;
-}
-
-export async function fetchCloudAppData() {
+export async function fetchCloudAppData(): Promise<CloudResult<AppData | null>> {
   return withRetry(async () => {
-    const client = getSupabaseBrowserClient();
-    if (!client || !workspaceId) {
-      return { ok: false as const, message: "Supabase is not configured." };
+    const response = await fetch(snapshotEndpoint, {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store"
+    }).catch(() => null);
+
+    if (!response) {
+      return {
+        ok: false,
+        code: "request-failed",
+        message: formatCloudError("failed to fetch")
+      };
     }
 
-    const { data, error } = await client
-      .from(tableName)
-      .select("data")
-      .eq("id", workspaceId)
-      .maybeSingle();
-
-    if (error) {
-      return { ok: false as const, message: formatSupabaseError(error.message) };
+    if (!response.ok) {
+      return {
+        ok: false,
+        code: classifyResponse(response.status),
+        message: formatCloudError(await parseMessage(response))
+      };
     }
 
-    if (!data?.data) {
-      return { ok: true as const, data: null };
-    }
-
+    const body = (await response.json()) as { data: Partial<AppData> | null };
     return {
-      ok: true as const,
-      data: normalizeAppData(data.data as Partial<AppData>)
+      ok: true,
+      data: body.data ? normalizeAppData(body.data) : null
     };
   });
 }
 
-export async function saveCloudAppData(appData: AppData) {
+export async function saveCloudAppData(appData: AppData): Promise<CloudResult<null>> {
   return withRetry(async () => {
-    const client = getSupabaseBrowserClient();
-    if (!client || !workspaceId) {
-      return { ok: false as const, message: "Supabase is not configured." };
-    }
-
-    const { error } = await client.from(tableName).upsert(
-      {
-        id: workspaceId,
-        data: appData,
-        updated_at: new Date().toISOString()
+    const response = await fetch(snapshotEndpoint, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json"
       },
-      { onConflict: "id" }
-    );
+      body: JSON.stringify(appData)
+    }).catch(() => null);
 
-    if (error) {
-      return { ok: false as const, message: formatSupabaseError(error.message) };
+    if (!response) {
+      return {
+        ok: false,
+        code: "request-failed",
+        message: formatCloudError("failed to fetch")
+      };
     }
 
-    return { ok: true as const, data: null };
-  }).then((result) => {
-    if (!result.ok) {
-      return result;
+    if (!response.ok) {
+      return {
+        ok: false,
+        code: classifyResponse(response.status),
+        message: formatCloudError(await parseMessage(response))
+      };
     }
 
-    return { ok: true as const };
+    return { ok: true, data: null };
   });
+}
+
+export async function connectCloudSync(passcode: string): Promise<CloudResult<null>> {
+  const response = await fetch(authEndpoint, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ passcode })
+  }).catch(() => null);
+
+  if (!response) {
+    return {
+      ok: false,
+      code: "request-failed",
+      message: formatCloudError("failed to fetch")
+    };
+  }
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      code: classifyResponse(response.status),
+      message: formatCloudError(await parseMessage(response))
+    };
+  }
+
+  return { ok: true, data: null };
+}
+
+export async function disconnectCloudSync() {
+  await fetch(authEndpoint, {
+    method: "DELETE",
+    credentials: "same-origin"
+  }).catch(() => null);
 }

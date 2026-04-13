@@ -6,21 +6,9 @@ create table if not exists public.app_snapshots (
 
 alter table public.app_snapshots enable row level security;
 
-create policy "Allow anon read snapshots"
-on public.app_snapshots
-for select
-to anon
-using (true);
+drop policy if exists "Allow anon read snapshots" on public.app_snapshots;
+drop policy if exists "Allow anon write snapshots" on public.app_snapshots;
+drop policy if exists "Allow anon update snapshots" on public.app_snapshots;
 
-create policy "Allow anon write snapshots"
-on public.app_snapshots
-for insert
-to anon
-with check (true);
-
-create policy "Allow anon update snapshots"
-on public.app_snapshots
-for update
-to anon
-using (true)
-with check (true);
+revoke all on public.app_snapshots from anon;
+revoke all on public.app_snapshots from authenticated;

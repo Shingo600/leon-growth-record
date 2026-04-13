@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import { getCurrentActivityMinutes } from "@/lib/activity";
 import { defaultAppData } from "@/lib/dummy-data";
 import { loadAppData, saveAppData } from "@/lib/storage";
-import { fetchCloudAppData, isSupabaseConfigured, saveCloudAppData } from "@/lib/supabase";
+import { connectCloudSync, disconnectCloudSync, fetchCloudAppData, saveCloudAppData } from "@/lib/supabase";
 import {
   ActivityCategory,
   ActivityKind,
@@ -46,6 +46,9 @@ type AppContextValue = {
   storageMode: StorageMode;
   syncStatus: SyncStatus;
   syncMessage: string;
+  syncAuthRequired: boolean;
+  connectSync: (passcode: string) => Promise<boolean>;
+  disconnectSync: () => Promise<void>;
   replaceData: (data: AppData) => void;
   updateProfile: (profile: DogProfile) => void;
   addRecord: (record: RecordInput) => void;
@@ -139,6 +142,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [storageMode, setStorageMode] = useState<StorageMode>("local");
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncMessage, setSyncMessage] = useState("この端末に保存しています。");
+  const [syncAuthRequired, setSyncAuthRequired] = useState(false);
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -146,43 +150,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     async function initialize() {
       const localData = loadAppData();
-      const cloudEnabled = isSupabaseConfigured();
 
       if (localData && !cancelled) {
         setData(localData);
       }
 
-      if (cloudEnabled) {
+      setSyncStatus("syncing");
+      setSyncMessage("クラウド同期を確認しています。");
+
+      const result = await fetchCloudAppData();
+      if (cancelled) {
+        return;
+      }
+
+      if (result.ok && result.data) {
+        const nextData =
+          localData && hasMeaningfulData(localData) && !hasMeaningfulData(result.data) ? localData : result.data;
+        setData(nextData);
         setStorageMode("cloud");
-        setSyncStatus("syncing");
-        setSyncMessage("クラウド同期を確認しています。");
-
-        const result = await fetchCloudAppData();
-        if (cancelled) {
-          return;
-        }
-
-        if (result.ok && result.data) {
-          const nextData =
-            localData && hasMeaningfulData(localData) && !hasMeaningfulData(result.data)
-              ? localData
-              : result.data;
-          setData(nextData);
-          setSyncStatus("synced");
-          setSyncMessage("Supabase と同期中です。家族の端末とも同じデータを使えます。");
-        } else if (result.ok && !result.data) {
-          setSyncStatus("idle");
-          setSyncMessage("Supabase は設定済みです。最初の保存でクラウド同期が始まります。");
-        } else {
-          setStorageMode("local");
-          setSyncStatus("error");
-          setSyncMessage("クラウド同期に失敗したため、この端末の保存に切り替えています。");
-          setSaveError("message" in result ? result.message : "");
-        }
-      } else {
+        setSyncStatus("synced");
+        setSyncAuthRequired(false);
+        setSyncMessage("クラウド同期を使っています。家族の端末でも同じデータを見られます。");
+      } else if (result.ok && !result.data) {
+        setStorageMode("cloud");
+        setSyncStatus("idle");
+        setSyncAuthRequired(false);
+        setSyncMessage("クラウド同期は有効です。まだクラウド側に保存はありません。");
+      } else if (!result.ok && result.code === "auth-required") {
+        setStorageMode("local");
+        setSyncStatus("error");
+        setSyncAuthRequired(true);
+        setSyncMessage("家族共有を使うには同期コードを入力してください。");
+        setSaveError("");
+      } else if (!result.ok && result.code === "not-configured") {
         setStorageMode("local");
         setSyncStatus("idle");
-        setSyncMessage("この端末に保存しています。PC と携帯をそろえるにはバックアップ復元か Supabase 設定が必要です。");
+        setSyncAuthRequired(false);
+        setSyncMessage("この端末に保存しています。クラウド同期はまだ設定されていません。");
+      } else {
+        const errorMessage = result.ok ? "" : result.message;
+        setStorageMode("local");
+        setSyncStatus("error");
+        setSyncAuthRequired(false);
+        setSyncMessage("クラウド同期に失敗したため、この端末の保存に切り替えています。");
+        setSaveError(errorMessage);
       }
 
       if (!cancelled) {
@@ -204,14 +215,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const localResult = saveAppData(data);
-    const shouldShowLocalError = !isSupabaseConfigured() || storageMode === "local";
-    if (shouldShowLocalError) {
+    if (storageMode === "local") {
       setSaveError(localResult.ok ? "" : localResult.message);
     } else if (localResult.ok) {
       setSaveError("");
     }
 
-    if (!isSupabaseConfigured() || storageMode !== "cloud") {
+    if (storageMode !== "cloud") {
       return;
     }
 
@@ -227,12 +237,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (result.ok) {
         setSyncStatus("synced");
         setSaveError("");
-        setSyncMessage("Supabase と同期中です。");
-      } else {
-        setSyncStatus("error");
-        setSyncMessage("Supabase への保存に失敗しました。この端末のデータは保持されています。");
-        setSaveError("message" in result ? result.message : "");
+        setSyncMessage("クラウド同期済みです。");
+        return;
       }
+
+      setSyncStatus("error");
+      setSyncAuthRequired(result.code === "auth-required");
+      setSyncMessage(
+        result.code === "auth-required"
+          ? "同期コードの確認が必要です。プロフィールで再接続してください。"
+          : "クラウド保存に失敗したため、この端末の保存を続けています。"
+      );
+      setSaveError(result.message);
     }
 
     void syncCloud();
@@ -250,6 +266,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
       storageMode,
       syncStatus,
       syncMessage,
+      syncAuthRequired,
+      async connectSync(passcode) {
+        const authResult = await connectCloudSync(passcode);
+        if (!authResult.ok) {
+          setStorageMode("local");
+          setSyncStatus("error");
+          setSyncAuthRequired(authResult.code !== "not-configured");
+          setSyncMessage(
+            authResult.code === "not-configured"
+              ? "クラウド同期はまだ設定されていません。"
+              : "同期コードを確認してからもう一度お試しください。"
+          );
+          setSaveError(authResult.message);
+          return false;
+        }
+
+        const cloudResult = await fetchCloudAppData();
+        if (!cloudResult.ok) {
+          setStorageMode("local");
+          setSyncStatus("error");
+          setSyncAuthRequired(cloudResult.code === "auth-required");
+          setSyncMessage("同期コードは通りましたが、クラウドの読み込みに失敗しました。");
+          setSaveError(cloudResult.message);
+          return false;
+        }
+
+        if (cloudResult.data) {
+          setData((current) => (hasMeaningfulData(current) && !hasMeaningfulData(cloudResult.data!) ? current : cloudResult.data!));
+        }
+
+        setStorageMode("cloud");
+        setSyncStatus(cloudResult.data ? "synced" : "idle");
+        setSyncAuthRequired(false);
+        setSyncMessage(
+          cloudResult.data
+            ? "クラウド同期を使っています。家族の端末でも同じデータを見られます。"
+            : "クラウド同期は有効です。まだクラウド側に保存はありません。"
+        );
+        setSaveError("");
+        return true;
+      },
+      async disconnectSync() {
+        await disconnectCloudSync();
+        setStorageMode("local");
+        setSyncStatus("idle");
+        setSyncAuthRequired(true);
+        setSyncMessage("この端末の保存に戻しました。再接続するには同期コードを入力してください。");
+      },
       replaceData(nextData) {
         setData(nextData);
       },
@@ -590,7 +654,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }));
       }
     }),
-    [data, isReady, saveError, storageMode, syncMessage, syncStatus]
+    [data, isReady, saveError, storageMode, syncAuthRequired, syncMessage, syncStatus]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -599,7 +663,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 export function useAppData() {
   const context = useContext(AppContext);
   if (!context) {
-    throw new Error("useAppData は AppProvider の中で使用してください");
+    throw new Error("useAppData は AppProvider の中で使ってください");
   }
 
   return context;
