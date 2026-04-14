@@ -7,6 +7,7 @@ export function SyncStatusCard() {
   const { connectSync, disconnectSync, storageMode, syncAuthRequired, syncMessage, syncStatus } = useAppData();
   const [passcode, setPasscode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPasscode, setShowPasscode] = useState(false);
 
   const badge =
     storageMode === "cloud"
@@ -45,13 +46,23 @@ export function SyncStatusCard() {
         <div className="mt-4 space-y-3">
           <label className="block text-sm font-semibold text-ink">
             同期コード
-            <input
-              type="password"
-              value={passcode}
-              onChange={(event) => setPasscode(event.target.value)}
-              placeholder="家族で使う同期コード"
-              className="mt-2 w-full rounded-2xl border border-line bg-white px-4 py-3 text-base outline-none transition focus:border-accent/60"
-            />
+            <div className="mt-2 flex items-center gap-2 rounded-2xl border border-line bg-white px-4 py-3 focus-within:border-accent/60">
+              <input
+                type={showPasscode ? "text" : "password"}
+                value={passcode}
+                onChange={(event) => setPasscode(event.target.value)}
+                placeholder="家族で使う同期コード"
+                className="min-w-0 flex-1 bg-transparent text-base outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasscode((current) => !current)}
+                className="shrink-0 text-xs font-semibold text-ink/65 transition hover:text-ink"
+                aria-label={showPasscode ? "同期コードを隠す" : "同期コードを表示する"}
+              >
+                {showPasscode ? "非表示" : "表示"}
+              </button>
+            </div>
           </label>
           <button
             type="button"
