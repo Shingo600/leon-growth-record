@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppData } from "@/components/app-provider";
 import { prepareImageForStorage } from "@/lib/image-client";
+import { uploadSharedPhoto } from "@/lib/shared-photo";
 import type { Appetite, EnergyLevel, GrowthRecord, PoopCondition } from "@/lib/types";
 import { getTodayDateString } from "@/lib/utils";
 
@@ -30,9 +31,10 @@ export function RecordForm({
   className = "card space-y-5 p-5"
 }: RecordFormProps) {
   const router = useRouter();
-  const { addRecord } = useAppData();
+  const { addRecord, storageMode } = useAppData();
   const [imageMessage, setImageMessage] = useState("");
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     date: initialRecord?.date ?? initialDate ?? getTodayDateString(),
     taijyuu: String(initialRecord?.taijyuu ?? "0"),
@@ -65,10 +67,28 @@ export function RecordForm({
   return (
     <form
       className={className}
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
+        setIsSubmitting(true);
+
+        let nextPhotoUrl = form.photoUrl;
+        if (storageMode === "cloud" && form.photoUrl.startsWith("data:image/")) {
+          try {
+            nextPhotoUrl = await uploadSharedPhoto({
+              dataUrl: form.photoUrl,
+              fileName: selectedFileName || `record-${form.date}.jpg`,
+              folder: "records"
+            });
+          } catch (error) {
+            setImageMessage(error instanceof Error ? error.message : "写真共有のアップロードに失敗しました。");
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
         const nextRecord = {
           ...form,
+          photoUrl: nextPhotoUrl,
           taijyuu: Number(form.taijyuu)
         };
 
@@ -81,6 +101,7 @@ export function RecordForm({
         if (redirectOnSubmit) {
           router.push("/records");
         }
+        setIsSubmitting(false);
       }}
     >
       <div>
@@ -220,8 +241,8 @@ export function RecordForm({
         />
       </div>
 
-      <button className="button-primary w-full" type="submit">
-        {submitLabel}
+      <button className="button-primary w-full disabled:opacity-60" type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "保存中..." : submitLabel}
       </button>
     </form>
   );

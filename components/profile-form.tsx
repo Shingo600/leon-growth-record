@@ -4,6 +4,7 @@ import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { useAppData } from "@/components/app-provider";
 import { prepareImageForStorage } from "@/lib/image-client";
+import { uploadSharedPhoto } from "@/lib/shared-photo";
 import type { DogGender } from "@/lib/types";
 
 const genderOptions: DogGender[] = ["オス", "メス", "不明"];
@@ -40,10 +41,11 @@ function createFormState(data: ReturnType<typeof useAppData>["data"]): ProfileFo
 
 export function ProfileForm() {
   const app = useAppData();
-  const { updateProfile } = app;
+  const { updateProfile, storageMode } = app;
   const [savedMessage, setSavedMessage] = useState("");
   const [imageMessage, setImageMessage] = useState("");
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<ProfileFormState>(() => createFormState(app.data));
 
   useEffect(() => {
@@ -72,8 +74,25 @@ export function ProfileForm() {
   return (
     <form
       className="card space-y-5 p-5"
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
+        setIsSubmitting(true);
+
+        let nextPhotoUrl = form.photoUrl;
+        if (storageMode === "cloud" && form.photoUrl.startsWith("data:image/")) {
+          try {
+            nextPhotoUrl = await uploadSharedPhoto({
+              dataUrl: form.photoUrl,
+              fileName: selectedFileName || "profile-photo.jpg",
+              folder: "profile"
+            });
+          } catch (error) {
+            setImageMessage(error instanceof Error ? error.message : "プロフィール写真の共有アップロードに失敗しました。");
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
         updateProfile({
           name: form.name,
           breed: form.breed,
@@ -81,7 +100,7 @@ export function ProfileForm() {
           gender: form.gender,
           arrivalDate: form.arrivalDate,
           currentWeight: Number(form.currentWeight),
-          photoUrl: form.photoUrl,
+          photoUrl: nextPhotoUrl,
           catchPhrase: form.catchPhrase,
           dailyGoals: {
             walkMinutes: Number(form.walkGoal),
@@ -89,8 +108,10 @@ export function ProfileForm() {
             trainingMinutes: Number(form.trainingGoal)
           }
         });
+
         setSavedMessage("プロフィールを保存しました");
         window.setTimeout(() => setSavedMessage(""), 2000);
+        setIsSubmitting(false);
       }}
     >
       <div>
@@ -286,13 +307,14 @@ export function ProfileForm() {
           className="input min-h-24 resize-none"
           value={form.catchPhrase}
           onChange={(event) => setForm((current) => ({ ...current, catchPhrase: event.target.value }))}
-          placeholder="今日もやさしく見守ろう"
+          placeholder="毎日やさしく見守ろう"
         />
       </div>
 
-      <button className="button-primary w-full" type="submit">
-        プロフィールを保存
+      <button className="button-primary w-full disabled:opacity-60" type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "保存中..." : "プロフィールを保存"}
       </button>
+
       {form.photoUrl ? (
         <button
           type="button"
@@ -306,6 +328,7 @@ export function ProfileForm() {
           プロフィール写真を削除
         </button>
       ) : null}
+
       {savedMessage ? <p className="text-center text-sm text-moss">{savedMessage}</p> : null}
     </form>
   );
