@@ -39,6 +39,24 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
   };
 }
 
+function isEmbeddedImage(value: string) {
+  return value.startsWith("data:image/");
+}
+
+export function stripEmbeddedImagesForCloud(data: AppData): AppData {
+  return {
+    ...data,
+    profile: {
+      ...data.profile,
+      photoUrl: isEmbeddedImage(data.profile.photoUrl) ? "" : data.profile.photoUrl
+    },
+    records: data.records.map((record) => ({
+      ...record,
+      photoUrl: isEmbeddedImage(record.photoUrl) ? "" : record.photoUrl
+    }))
+  };
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

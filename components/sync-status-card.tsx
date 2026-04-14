@@ -37,6 +37,7 @@ export function SyncStatusCard() {
         <div>
           <p className="text-sm font-semibold">保存と共有</p>
           <p className="mt-1 text-sm leading-6 text-ink/65">{syncMessage}</p>
+          <p className="mt-2 text-xs leading-5 text-ink/45">端末で選んだ写真は容量対策のためクラウド共有には含めず、この端末に残します。</p>
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
       </div>

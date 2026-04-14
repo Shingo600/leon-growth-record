@@ -1,5 +1,5 @@
 import type { AppData } from "@/lib/types";
-import { normalizeAppData } from "@/lib/storage";
+import { normalizeAppData, stripEmbeddedImagesForCloud } from "@/lib/storage";
 
 const snapshotEndpoint = "/api/snapshot";
 const authEndpoint = "/api/snapshot/auth";
@@ -107,13 +107,14 @@ export async function fetchCloudAppData(): Promise<CloudResult<AppData | null>> 
 
 export async function saveCloudAppData(appData: AppData): Promise<CloudResult<null>> {
   return withRetry(async () => {
+    const sanitizedData = stripEmbeddedImagesForCloud(appData);
     const response = await fetch(snapshotEndpoint, {
       method: "PUT",
       credentials: "same-origin",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(appData)
+      body: JSON.stringify(sanitizedData)
     }).catch(() => null);
 
     if (!response) {
