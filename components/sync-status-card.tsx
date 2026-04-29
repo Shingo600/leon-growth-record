@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAppData } from "@/components/app-provider";
 
 export function SyncStatusCard() {
-  const { connectSync, disconnectSync, storageMode, syncAuthRequired, syncMessage, syncStatus } = useAppData();
+  const { connectSync, disconnectSync, saveError, storageMode, syncAuthRequired, syncMessage, syncStatus } = useAppData();
   const [passcode, setPasscode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPasscode, setShowPasscode] = useState(false);
@@ -40,6 +40,11 @@ export function SyncStatusCard() {
         <div>
           <p className="text-sm font-semibold">保存と共有</p>
           <p className="mt-1 text-sm leading-6 text-ink/65">{syncMessage}</p>
+          {syncStatus === "error" && saveError ? (
+            <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-xs font-semibold leading-5 text-rose-700">
+              詳細: {saveError}
+            </p>
+          ) : null}
         </div>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
       </div>
