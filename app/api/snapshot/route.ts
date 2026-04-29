@@ -7,9 +7,9 @@ import { readServerSyncConfig, syncCookieName, verifySyncSessionToken } from "@/
 const tableName = "app_snapshots";
 
 function getServerClient() {
-  const { supabaseUrl, serviceRoleKey, workspaceId, isConfigured } = readServerSyncConfig();
+  const { configError, supabaseUrl, serviceRoleKey, workspaceId, isConfigured } = readServerSyncConfig();
   if (!isConfigured || !supabaseUrl || !serviceRoleKey || !workspaceId) {
-    return null;
+    return { error: configError || "クラウド同期の環境変数が不足しています。" } as const;
   }
 
   return {
@@ -36,18 +36,25 @@ function ensureAuthorized(request: Request) {
 
 export async function GET(request: Request) {
   const server = getServerClient();
-  if (!server) {
-    return NextResponse.json({ message: "クラウド同期はまだ設定されていません。" }, { status: 503 });
+  if ("error" in server) {
+    return NextResponse.json({ message: server.error }, { status: 503 });
   }
 
   if (!ensureAuthorized(request)) {
     return NextResponse.json({ message: "同期コードを入力してください。" }, { status: 401 });
   }
 
-  const { data, error } = await server.client.from(tableName).select("data").eq("id", server.workspaceId).maybeSingle();
+  let result;
+  try {
+    result = await server.client.from(tableName).select("data").eq("id", server.workspaceId).maybeSingle();
+  } catch (error) {
+    result = { data: null, error };
+  }
+  const { data, error } = result;
 
   if (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ message: `Supabaseへの接続に失敗しました: ${message}` }, { status: 500 });
   }
 
   if (!data?.data) {
@@ -59,8 +66,8 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   const server = getServerClient();
-  if (!server) {
-    return NextResponse.json({ message: "クラウド同期はまだ設定されていません。" }, { status: 503 });
+  if ("error" in server) {
+    return NextResponse.json({ message: server.error }, { status: 503 });
   }
 
   if (!ensureAuthorized(request)) {
@@ -73,17 +80,24 @@ export async function PUT(request: Request) {
   }
 
   const appData = normalizeAppData(payload);
-  const { error } = await server.client.from(tableName).upsert(
-    {
-      id: server.workspaceId,
-      data: appData,
-      updated_at: new Date().toISOString()
-    },
-    { onConflict: "id" }
-  );
+  let result;
+  try {
+    result = await server.client.from(tableName).upsert(
+      {
+        id: server.workspaceId,
+        data: appData,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "id" }
+    );
+  } catch (error) {
+    result = { error };
+  }
+  const { error } = result;
 
   if (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ message: `Supabaseへの保存に失敗しました: ${message}` }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true }, { status: 200 });
