@@ -192,7 +192,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setStorageMode("local");
         setSyncStatus("error");
         setSyncAuthRequired(false);
-        setSyncMessage("クラウド同期に失敗したため、この端末の保存に切り替えています。");
+        setSyncMessage(`クラウド同期に失敗したため、この端末の保存に切り替えています。詳細: ${errorMessage}`);
         setSaveError(errorMessage);
       }
 
@@ -287,7 +287,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setStorageMode("local");
           setSyncStatus("error");
           setSyncAuthRequired(cloudResult.code === "auth-required");
-          setSyncMessage("同期コードは通りましたが、クラウドの読み込みに失敗しました。");
+          setSyncMessage(`同期コードは通りましたが、クラウドの読み込みに失敗しました。詳細: ${cloudResult.message}`);
           setSaveError(cloudResult.message);
           return false;
         }

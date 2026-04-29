@@ -20,17 +20,18 @@ type CloudFailure = {
 export type CloudResult<T> = CloudSuccess<T> | CloudFailure;
 
 function formatCloudError(message: string) {
-  const lowerMessage = message.toLowerCase();
+  const safeMessage = message || "クラウド同期に失敗しました。";
+  const lowerMessage = safeMessage.toLowerCase();
 
   if (lowerMessage.includes("statement timeout")) {
-    return "同期処理が混み合っていました。少し待ってからもう一度お試しください。";
+    return "同期処理が混み合っています。少し待ってからもう一度お試しください。";
   }
 
   if (lowerMessage.includes("network") || lowerMessage.includes("failed to fetch")) {
     return "通信状態が安定しませんでした。接続を確認してから再度お試しください。";
   }
 
-  return message;
+  return safeMessage;
 }
 
 function classifyResponse(status: number): CloudErrorCode {
