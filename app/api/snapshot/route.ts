@@ -6,6 +6,22 @@ import { readServerSyncConfig, syncCookieName, verifySyncSessionToken } from "@/
 
 const tableName = "app_snapshots";
 
+function formatUnknownError(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
 function getServerClient() {
   const { configError, supabaseUrl, serviceRoleKey, workspaceId, isConfigured } = readServerSyncConfig();
   if (!isConfigured || !supabaseUrl || !serviceRoleKey || !workspaceId) {
@@ -53,7 +69,7 @@ export async function GET(request: Request) {
   const { data, error } = result;
 
   if (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = formatUnknownError(error);
     return NextResponse.json({ message: `Supabaseへの接続に失敗しました: ${message}` }, { status: 500 });
   }
 
@@ -96,7 +112,7 @@ export async function PUT(request: Request) {
   const { error } = result;
 
   if (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = formatUnknownError(error);
     return NextResponse.json({ message: `Supabaseへの保存に失敗しました: ${message}` }, { status: 500 });
   }
 
