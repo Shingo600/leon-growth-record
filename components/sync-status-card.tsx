@@ -9,12 +9,14 @@ export function SyncStatusCard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPasscode, setShowPasscode] = useState(false);
 
+  const shouldShowConnectForm = syncAuthRequired || storageMode !== "cloud";
+
   const badge =
     storageMode === "cloud"
       ? syncStatus === "synced"
-        ? { label: "同期中", className: "bg-emerald-50 text-emerald-700" }
+        ? { label: "共有中", className: "bg-emerald-50 text-emerald-700" }
         : syncStatus === "syncing"
-          ? { label: "同期確認中", className: "bg-amber-50 text-amber-700" }
+          ? { label: "確認中", className: "bg-amber-50 text-amber-700" }
           : { label: "要確認", className: "bg-rose-50 text-rose-700" }
       : { label: "端末保存", className: "bg-cream text-ink/70" };
 
@@ -42,7 +44,7 @@ export function SyncStatusCard() {
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}>{badge.label}</span>
       </div>
 
-      {syncAuthRequired ? (
+      {shouldShowConnectForm ? (
         <div className="mt-4 space-y-3">
           <label className="block text-sm font-semibold text-ink">
             同期コード
@@ -58,7 +60,7 @@ export function SyncStatusCard() {
                 type="button"
                 onClick={() => setShowPasscode((current) => !current)}
                 className="shrink-0 text-xs font-semibold text-ink/65 transition hover:text-ink"
-                aria-label={showPasscode ? "同期コードを隠す" : "同期コードを表示する"}
+                aria-label={showPasscode ? "同期コードを非表示にする" : "同期コードを表示する"}
               >
                 {showPasscode ? "非表示" : "表示"}
               </button>
