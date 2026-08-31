@@ -1,6 +1,15 @@
 import { AppData } from "@/lib/types";
 import { defaultAppData } from "@/lib/dummy-data";
-import { sortActivityRecords, sortEvents, sortExpenseRecords, sortHealthRecords, sortMealRecords, sortRecords } from "@/lib/utils";
+import {
+  sortActivityRecords,
+  sortCommandPracticeRecords,
+  sortDogCommands,
+  sortEvents,
+  sortExpenseRecords,
+  sortHealthRecords,
+  sortMealRecords,
+  sortRecords
+} from "@/lib/utils";
 
 const STORAGE_KEY = "leon-growth-record-data";
 const BACKUP_SCHEMA_VERSION = 1;
@@ -35,7 +44,9 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
     activityRecords: sortActivityRecords(raw.activityRecords ?? []),
     mealRecords: sortMealRecords(raw.mealRecords ?? []),
     foodItems: raw.foodItems ?? defaultAppData.foodItems,
-    expenseRecords: sortExpenseRecords(raw.expenseRecords ?? [])
+    expenseRecords: sortExpenseRecords(raw.expenseRecords ?? []),
+    dogCommands: sortDogCommands(raw.dogCommands ?? defaultAppData.dogCommands),
+    commandPracticeRecords: sortCommandPracticeRecords(raw.commandPracticeRecords ?? [])
   };
 }
 

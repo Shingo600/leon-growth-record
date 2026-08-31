@@ -12,7 +12,9 @@ import {
   ActivityRecord,
   AppData,
   CalendarEvent,
+  CommandPracticeRecord,
   DogProfile,
+  DogCommand,
   ExpenseRecord,
   FoodItem,
   GrowthRecord,
@@ -22,6 +24,8 @@ import {
 import {
   createId,
   sortActivityRecords,
+  sortCommandPracticeRecords,
+  sortDogCommands,
   sortEvents,
   sortExpenseRecords,
   sortHealthRecords,
@@ -36,6 +40,8 @@ type ActivityRecordInput = Omit<ActivityRecord, "id" | "createdAt">;
 type MealRecordInput = Omit<MealRecord, "id" | "createdAt">;
 type ExpenseRecordInput = Omit<ExpenseRecord, "id" | "createdAt">;
 type FoodItemInput = Omit<FoodItem, "id">;
+type DogCommandInput = Omit<DogCommand, "id" | "createdAt">;
+type CommandPracticeRecordInput = Omit<CommandPracticeRecord, "id" | "createdAt">;
 type StorageMode = "local" | "cloud";
 type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
@@ -75,6 +81,12 @@ type AppContextValue = {
   addFoodItem: (item: FoodItemInput) => void;
   updateFoodItem: (id: string, item: FoodItemInput) => void;
   deleteFoodItem: (id: string) => void;
+  addDogCommand: (command: DogCommandInput) => void;
+  updateDogCommand: (id: string, command: DogCommandInput) => void;
+  deleteDogCommand: (id: string) => void;
+  addCommandPracticeRecord: (record: CommandPracticeRecordInput) => void;
+  updateCommandPracticeRecord: (id: string, record: CommandPracticeRecordInput) => void;
+  deleteCommandPracticeRecord: (id: string) => void;
 };
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -88,7 +100,9 @@ function getInitialData(): AppData {
     activityRecords: sortActivityRecords(defaultAppData.activityRecords),
     mealRecords: sortMealRecords(defaultAppData.mealRecords),
     foodItems: defaultAppData.foodItems,
-    expenseRecords: sortExpenseRecords(defaultAppData.expenseRecords)
+    expenseRecords: sortExpenseRecords(defaultAppData.expenseRecords),
+    dogCommands: sortDogCommands(defaultAppData.dogCommands),
+    commandPracticeRecords: sortCommandPracticeRecords(defaultAppData.commandPracticeRecords)
   };
 }
 
@@ -128,6 +142,8 @@ function hasMeaningfulData(appData: AppData) {
       appData.mealRecords.length ||
       appData.foodItems.length ||
       appData.expenseRecords.length ||
+      appData.dogCommands.length ||
+      appData.commandPracticeRecords.length ||
       appData.profile.breed ||
       appData.profile.birthday ||
       appData.profile.arrivalDate ||
@@ -651,6 +667,79 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...current,
           foodItems: current.foodItems.filter((food) => food.id !== id),
           mealRecords: sortMealRecords(current.mealRecords.filter((meal) => meal.foodItemId !== id))
+        }));
+      },
+      addDogCommand(command) {
+        setData((current) => ({
+          ...current,
+          dogCommands: sortDogCommands([
+            {
+              ...command,
+              id: createId("command"),
+              createdAt: new Date().toISOString()
+            },
+            ...current.dogCommands
+          ])
+        }));
+      },
+      updateDogCommand(id, command) {
+        setData((current) => ({
+          ...current,
+          dogCommands: sortDogCommands(
+            current.dogCommands.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    ...command
+                  }
+                : item
+            )
+          )
+        }));
+      },
+      deleteDogCommand(id) {
+        setData((current) => ({
+          ...current,
+          dogCommands: sortDogCommands(current.dogCommands.filter((command) => command.id !== id)),
+          commandPracticeRecords: sortCommandPracticeRecords(
+            current.commandPracticeRecords.filter((record) => record.commandId !== id)
+          )
+        }));
+      },
+      addCommandPracticeRecord(record) {
+        setData((current) => ({
+          ...current,
+          commandPracticeRecords: sortCommandPracticeRecords([
+            {
+              ...record,
+              id: createId("command-practice"),
+              createdAt: new Date().toISOString()
+            },
+            ...current.commandPracticeRecords
+          ])
+        }));
+      },
+      updateCommandPracticeRecord(id, record) {
+        setData((current) => ({
+          ...current,
+          commandPracticeRecords: sortCommandPracticeRecords(
+            current.commandPracticeRecords.map((item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    ...record
+                  }
+                : item
+            )
+          )
+        }));
+      },
+      deleteCommandPracticeRecord(id) {
+        setData((current) => ({
+          ...current,
+          commandPracticeRecords: sortCommandPracticeRecords(
+            current.commandPracticeRecords.filter((record) => record.id !== id)
+          )
         }));
       }
     }),

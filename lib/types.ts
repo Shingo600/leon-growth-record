@@ -18,6 +18,9 @@ export type MealType = "朝" | "昼" | "夜" | "おやつ";
 export type FoodCategory = "ドライ" | "ウェット" | "おやつ" | "サプリ";
 export type ExpenseCategory = "フード" | "病院" | "トリミング" | "消耗品" | "おもちゃ" | "保険" | "その他";
 export type GraphRange = "1週間" | "1か月" | "全期間";
+export type CommandStatus = "練習中" | "ほぼOK" | "習得";
+export type CommandCueType = "声" | "手" | "両方";
+export type CommandFocusLevel = "高い" | "普通" | "低い";
 
 export type DailyGoals = {
   walkMinutes: number;
@@ -123,6 +126,29 @@ export type ExpenseRecord = {
   createdAt: string;
 };
 
+export type DogCommand = {
+  id: string;
+  name: string;
+  status: CommandStatus;
+  cueType: CommandCueType;
+  successRate: number;
+  lastPracticedDate: string;
+  memo: string;
+  createdAt: string;
+};
+
+export type CommandPracticeRecord = {
+  id: string;
+  date: string;
+  commandId: string;
+  durationMinutes: number;
+  attempts: number;
+  successes: number;
+  focusLevel: CommandFocusLevel;
+  memo: string;
+  createdAt: string;
+};
+
 export type WeightRecord = GrowthRecord;
 export type ScheduleItem = CalendarEvent;
 
@@ -135,4 +161,6 @@ export type AppData = {
   mealRecords: MealRecord[];
   foodItems: FoodItem[];
   expenseRecords: ExpenseRecord[];
+  dogCommands: DogCommand[];
+  commandPracticeRecords: CommandPracticeRecord[];
 };

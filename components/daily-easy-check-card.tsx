@@ -60,6 +60,7 @@ export function DailyEasyCheckCard({ today, todayRecordHref }: DailyEasyCheckCar
 
   const todayRecord = data.records.find((record) => record.date === today);
   const todayMeals = data.mealRecords.filter((record) => record.date === today);
+  const hasCommandPracticeToday = data.commandPracticeRecords.some((record) => record.date === today);
   const activityItems = useMemo(
     () => buildActivityItems(data.activityRecords, data.profile.dailyGoals, today),
     [data.activityRecords, data.profile.dailyGoals, today]
@@ -159,6 +160,13 @@ export function DailyEasyCheckCard({ today, todayRecordHref }: DailyEasyCheckCar
       status: training?.status === "達成" ? "達成" : "+10分",
       done: training?.status === "達成",
       onClick: () => training && incrementActivity(today, training.category, training.quickKind, 10)
+    },
+    {
+      key: "commands",
+      label: "コマンド",
+      status: hasCommandPracticeToday ? "記録済み" : "特訓する",
+      done: hasCommandPracticeToday,
+      href: "/commands"
     },
     {
       key: "energy",

@@ -1,6 +1,8 @@
 import {
   ActivityRecord,
   CalendarEvent,
+  CommandPracticeRecord,
+  DogCommand,
   EventType,
   ExpenseCategory,
   ExpenseRecord,
@@ -100,6 +102,22 @@ export function sortMealRecords(records: MealRecord[]) {
 
 export function sortExpenseRecords(records: ExpenseRecord[]) {
   return [...records].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function sortDogCommands(commands: DogCommand[]) {
+  return [...commands].sort((a, b) => {
+    const statusOrder: Record<DogCommand["status"], number> = {
+      練習中: 0,
+      ほぼOK: 1,
+      習得: 2
+    };
+
+    return statusOrder[a.status] - statusOrder[b.status] || a.name.localeCompare(b.name, "ja");
+  });
+}
+
+export function sortCommandPracticeRecords(records: CommandPracticeRecord[]) {
+  return [...records].sort((a, b) => `${b.date} ${b.createdAt}`.localeCompare(`${a.date} ${a.createdAt}`));
 }
 
 export function getTodayDateString() {

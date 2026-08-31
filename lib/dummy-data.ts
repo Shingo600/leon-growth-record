@@ -169,6 +169,62 @@ export const sampleAppData: AppData = {
       memo: "",
       createdAt: "2026-03-24T12:00:00.000Z"
     }
+  ],
+  dogCommands: [
+    {
+      id: "command-1",
+      name: "おすわり",
+      status: "習得",
+      cueType: "声",
+      successRate: 90,
+      lastPracticedDate: "2026-03-26",
+      memo: "落ち着いている時はかなり安定。",
+      createdAt: "2026-03-01T09:00:00.000Z"
+    },
+    {
+      id: "command-2",
+      name: "まて",
+      status: "ほぼOK",
+      cueType: "両方",
+      successRate: 70,
+      lastPracticedDate: "2026-03-26",
+      memo: "距離が近いと成功しやすい。",
+      createdAt: "2026-03-02T09:00:00.000Z"
+    },
+    {
+      id: "command-3",
+      name: "ふせ",
+      status: "練習中",
+      cueType: "手",
+      successRate: 40,
+      lastPracticedDate: "",
+      memo: "短時間で楽しく練習する。",
+      createdAt: "2026-03-03T09:00:00.000Z"
+    }
+  ],
+  commandPracticeRecords: [
+    {
+      id: "command-practice-1",
+      date: "2026-03-26",
+      commandId: "command-1",
+      durationMinutes: 5,
+      attempts: 8,
+      successes: 7,
+      focusLevel: "高い",
+      memo: "ごはん前に短く復習。",
+      createdAt: "2026-03-26T18:20:00.000Z"
+    },
+    {
+      id: "command-practice-2",
+      date: "2026-03-26",
+      commandId: "command-2",
+      durationMinutes: 4,
+      attempts: 6,
+      successes: 4,
+      focusLevel: "普通",
+      memo: "最後は成功で終われた。",
+      createdAt: "2026-03-26T18:25:00.000Z"
+    }
   ]
 };
 
@@ -194,5 +250,7 @@ export const defaultAppData: AppData = {
   activityRecords: [],
   mealRecords: [],
   foodItems: [],
-  expenseRecords: []
+  expenseRecords: [],
+  dogCommands: [],
+  commandPracticeRecords: []
 };
