@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ActivitySummaryCard } from "@/components/activity-summary-card";
 import { BalanceInsightCard } from "@/components/balance-insight-card";
+import { DailyEasyCheckCard } from "@/components/daily-easy-check-card";
 import { EmptyState } from "@/components/empty-state";
 import { EventCard } from "@/components/event-card";
 import { ExpenseSummaryCard } from "@/components/expense-summary-card";
@@ -71,6 +72,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      <DailyEasyCheckCard today={today} todayRecordHref={todayRecordHref} />
       <ActivitySummaryCard activityRecords={data.activityRecords} goals={data.profile.dailyGoals} today={today} />
       <TodayTasksCard tasks={tasks} />
       <QuickAddActions foodItems={data.foodItems} todayRecordHref={todayRecordHref} />
