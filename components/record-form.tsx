@@ -31,13 +31,13 @@ export function RecordForm({
   className = "card space-y-5 p-5"
 }: RecordFormProps) {
   const router = useRouter();
-  const { addRecord, storageMode } = useAppData();
+  const { addRecord, data, storageMode } = useAppData();
   const [imageMessage, setImageMessage] = useState("");
   const [selectedFileName, setSelectedFileName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     date: initialRecord?.date ?? initialDate ?? getTodayDateString(),
-    taijyuu: String(initialRecord?.taijyuu ?? "0"),
+    taijyuu: String(initialRecord?.taijyuu ?? data.profile.currentWeight ?? 0),
     appetite: initialRecord?.appetite ?? ("良い" as Appetite),
     energyLevel: initialRecord?.energyLevel ?? ("元気" as EnergyLevel),
     poopCondition: initialRecord?.poopCondition ?? ("良い" as PoopCondition),
