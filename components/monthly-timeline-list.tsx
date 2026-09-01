@@ -46,50 +46,56 @@ export function MonthlyTimelineList({
         <button
           key={item.date}
           type="button"
-          className="card w-full space-y-3 p-5 text-left transition hover:bg-white"
+          className="w-full rounded-3xl border border-line bg-white p-4 text-left shadow-[0_12px_30px_-28px_rgba(47,42,37,0.55)] transition hover:-translate-y-0.5 hover:shadow-card"
           onClick={() => onSelectDate(item.date)}
         >
-          <p className="text-lg font-semibold">
-            {formatDate(item.date, { year: "numeric", month: "numeric", day: "numeric" })}
-          </p>
+          <div className="grid gap-4 md:grid-cols-[120px_minmax(0,1fr)]">
+            <div>
+              <p className="text-lg font-bold">
+                {formatDate(item.date, { year: "numeric", month: "numeric", day: "numeric", weekday: "short" })}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-indigo-600">詳細を見る</p>
+            </div>
 
-          {item.record ? (
-            <p className="text-sm text-ink/75">
-              体重 {item.record.taijyuu.toFixed(1)}kg / 食欲 {item.record.appetite} / 元気 {item.record.energyLevel}
-            </p>
-          ) : null}
+            <div className="grid gap-3 md:grid-cols-5">
+              <div className="rounded-2xl bg-sky-50 px-3 py-3">
+                <p className="text-xs font-bold text-sky-700">体重</p>
+                <p className="mt-1 text-sm font-semibold text-ink/75">{item.record ? `${item.record.taijyuu.toFixed(1)}kg` : "なし"}</p>
+              </div>
 
-          {item.meals.length > 0 ? (
-            <p className="text-sm text-ink/75">
-              ごはん:{" "}
-              {item.meals
-                .slice(0, 3)
-                .map((meal) => `${meal.mealType}${meal.grams}g`)
-                .join(" / ")}
-            </p>
-          ) : null}
+              <div className="rounded-2xl bg-orange-50 px-3 py-3">
+                <p className="text-xs font-bold text-orange-700">ごはん</p>
+                <p className="mt-1 text-sm font-semibold text-ink/75">
+                  {item.meals.length > 0
+                    ? item.meals.slice(0, 2).map((meal) => `${meal.mealType}${meal.grams}g`).join(" / ")
+                    : "なし"}
+                </p>
+              </div>
 
-          {item.activityItems.some((activity) => activity.current > 0) ? (
-            <p className="text-sm text-ink/75">
-              活動:{" "}
-              {item.activityItems
-                .filter((activity) => activity.current > 0)
-                .map((activity) => `${activity.label}${activity.current}分`)
-                .join(" / ")}
-            </p>
-          ) : null}
+              <div className="rounded-2xl bg-emerald-50 px-3 py-3">
+                <p className="text-xs font-bold text-emerald-700">活動</p>
+                <p className="mt-1 text-sm font-semibold text-ink/75">
+                  {item.activityItems.some((activity) => activity.current > 0)
+                    ? item.activityItems.filter((activity) => activity.current > 0).slice(0, 2).map((activity) => `${activity.label}${activity.current}分`).join(" / ")
+                    : "なし"}
+                </p>
+              </div>
 
-          {item.healthRecords.length > 0 ? (
-            <p className="text-sm text-ink/75">
-              健康: {item.healthRecords.slice(0, 2).map((record) => `${record.type} ${record.title}`).join(" / ")}
-            </p>
-          ) : null}
+              <div className="rounded-2xl bg-rose-50 px-3 py-3">
+                <p className="text-xs font-bold text-rose-700">健康</p>
+                <p className="mt-1 text-sm font-semibold text-ink/75">
+                  {item.healthRecords.length > 0 ? item.healthRecords.slice(0, 1).map((record) => record.title).join(" / ") : "なし"}
+                </p>
+              </div>
 
-          {item.events.length > 0 ? (
-            <p className="text-sm text-ink/75">
-              予定: {item.events.slice(0, 2).map((event) => `${event.time} ${event.title}`).join(" / ")}
-            </p>
-          ) : null}
+              <div className="rounded-2xl bg-indigo-50 px-3 py-3">
+                <p className="text-xs font-bold text-indigo-700">予定</p>
+                <p className="mt-1 text-sm font-semibold text-ink/75">
+                  {item.events.length > 0 ? item.events.slice(0, 1).map((event) => `${event.time} ${event.title}`).join(" / ") : "なし"}
+                </p>
+              </div>
+            </div>
+          </div>
         </button>
       ))}
     </div>
