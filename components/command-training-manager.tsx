@@ -50,6 +50,28 @@ function buildCommandStats(command: DogCommand, practiceRecords: CommandPractice
   };
 }
 
+function getStatusBadgeClassName(status: CommandStatus) {
+  switch (status) {
+    case "習得":
+      return "bg-emerald-50 text-emerald-700";
+    case "ほぼOK":
+      return "bg-sky-50 text-sky-700";
+    default:
+      return "bg-indigo-50 text-indigo-700";
+  }
+}
+
+function getFocusBadgeClassName(focusLevel: CommandFocusLevel) {
+  switch (focusLevel) {
+    case "高い":
+      return "bg-emerald-50 text-emerald-700";
+    case "低い":
+      return "bg-amber-50 text-amber-700";
+    default:
+      return "bg-indigo-50 text-indigo-700";
+  }
+}
+
 function CommandForm({
   initialCommand,
   onCancel
@@ -375,82 +397,229 @@ export function CommandTrainingManager() {
   const { data, deleteCommandPracticeRecord, deleteDogCommand } = useAppData();
   const [editingCommandId, setEditingCommandId] = useState<string | null>(null);
   const [editingPracticeId, setEditingPracticeId] = useState<string | null>(null);
+  const [showCommandForm, setShowCommandForm] = useState(false);
 
   const todaysPractices = data.commandPracticeRecords.filter((record) => record.date === getTodayDateString());
   const totalTodayMinutes = todaysPractices.reduce((sum, record) => sum + record.durationMinutes, 0);
   const masteredCount = data.dogCommands.filter((command) => command.status === "習得").length;
+  const almostCount = data.dogCommands.filter((command) => command.status === "ほぼOK").length;
+  const trainingCommands = data.dogCommands.filter((command) => command.status !== "習得");
   const editingCommand = data.dogCommands.find((command) => command.id === editingCommandId);
   const editingPractice = data.commandPracticeRecords.find((record) => record.id === editingPracticeId);
 
   return (
     <div className="space-y-5">
-      <section className="card p-5">
-        <p className="text-sm text-ink/60">コマンド特訓</p>
-        <h2 className="mt-1 text-2xl font-semibold">できることを楽しく増やす</h2>
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <div className="rounded-3xl bg-cream px-3 py-4 text-center">
-            <p className="text-xs text-ink/55">登録</p>
-            <p className="text-2xl font-semibold">{data.dogCommands.length}</p>
+      <section className="grid overflow-hidden rounded-[1.6rem] border border-line bg-white shadow-card md:grid-cols-2">
+        <div className="border-b border-line bg-gradient-to-r from-indigo-50 to-white p-5 md:border-b-0 md:border-r">
+          <div className="flex items-center justify-center gap-3 text-indigo-700">
+            <span className="text-2xl" aria-hidden="true">✣</span>
+            <h2 className="text-2xl font-bold">覚えたコマンド</h2>
           </div>
-          <div className="rounded-3xl bg-cream px-3 py-4 text-center">
-            <p className="text-xs text-ink/55">習得</p>
-            <p className="text-2xl font-semibold">{masteredCount}</p>
-          </div>
-          <div className="rounded-3xl bg-cream px-3 py-4 text-center">
-            <p className="text-xs text-ink/55">今日</p>
-            <p className="text-2xl font-semibold">{totalTodayMinutes}分</p>
+          <div className="mx-auto mt-4 h-1 max-w-44 rounded-full bg-indigo-600" />
+        </div>
+        <div className="bg-gradient-to-r from-cream to-white p-5">
+          <div className="flex items-center justify-center gap-3 text-ink/70">
+            <span className="text-2xl" aria-hidden="true">▤</span>
+            <h2 className="text-2xl font-bold">コマンド習得中</h2>
           </div>
         </div>
       </section>
 
-      <section className="card space-y-4 p-5">
-        <div>
-          <p className="text-sm text-ink/60">覚えたコマンド一覧</p>
-          <h3 className="mt-1 text-xl font-semibold">コマンドを管理</h3>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(380px,0.95fr)]">
+        <section className="card space-y-5 p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-indigo-600">覚えたコマンド一覧</p>
+              <h3 className="mt-1 text-2xl font-bold">コマンドを管理</h3>
+            </div>
+            <button type="button" className="button-primary px-4 py-3" onClick={() => setShowCommandForm((current) => !current)}>
+              {showCommandForm ? "追加を閉じる" : "+ コマンド追加"}
+            </button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-3xl bg-emerald-50 px-4 py-4">
+              <p className="text-xs font-semibold text-emerald-700">覚えたコマンド</p>
+              <p className="mt-2 text-3xl font-bold text-emerald-800">{masteredCount}<span className="text-base">個</span></p>
+            </div>
+            <div className="rounded-3xl bg-sky-50 px-4 py-4">
+              <p className="text-xs font-semibold text-sky-700">得意なコマンド</p>
+              <p className="mt-2 text-3xl font-bold text-sky-800">{almostCount}<span className="text-base">個</span></p>
+            </div>
+            <div className="rounded-3xl bg-amber-50 px-4 py-4">
+              <p className="text-xs font-semibold text-amber-700">今日の特訓</p>
+              <p className="mt-2 text-3xl font-bold text-amber-800">{totalTodayMinutes}<span className="text-base">分</span></p>
+            </div>
+          </div>
+
+          {showCommandForm ? <CommandForm /> : null}
+
+          {data.dogCommands.length > 0 ? (
+            <div className="space-y-3">
+              {data.dogCommands.map((command) => {
+                const stats = buildCommandStats(command, data.commandPracticeRecords);
+                const isEditing = editingCommandId === command.id;
+
+                return (
+                  <div key={command.id} className="rounded-3xl border border-line bg-white p-4 shadow-[0_12px_30px_-26px_rgba(47,42,37,0.5)]">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-cream text-2xl" aria-hidden="true">
+                        🐾
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="text-xl font-bold">{command.name}</p>
+                            <p className="mt-1 text-sm text-ink/60">{command.memo || "少しずつ成功体験を増やします。"}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-ink/50">習得日</p>
+                            <p className="text-sm font-semibold text-ink/75">
+                              {stats.latestDate ? formatDate(stats.latestDate, { year: "numeric", month: "2-digit", day: "2-digit" }) : "未記録"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusBadgeClassName(command.status)}`}>
+                            {command.status}
+                          </span>
+                          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">合図 {command.cueType}</span>
+                          <span className="ml-auto rounded-full bg-cream px-3 py-1 text-xs font-bold text-ink/70">成功率 {stats.successRate}%</span>
+                        </div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-cream">
+                          <div className="h-full rounded-full bg-indigo-600" style={{ width: `${Math.min(stats.successRate, 100)}%` }} />
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button type="button" className="button-secondary w-full px-3 py-2 text-sm" onClick={() => setEditingCommandId(isEditing ? null : command.id)}>
+                            編集
+                          </button>
+                          <button
+                            type="button"
+                            className="button-secondary w-full px-3 py-2 text-sm"
+                            onClick={() => {
+                              if (window.confirm(`${command.name} と関連する練習記録を削除しますか？`)) {
+                                deleteDogCommand(command.id);
+                              }
+                            }}
+                          >
+                            削除
+                          </button>
+                        </div>
+                        {isEditing && editingCommand ? (
+                          <div className="mt-3">
+                            <CommandForm initialCommand={editingCommand} onCancel={() => setEditingCommandId(null)} />
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="rounded-3xl bg-cream px-4 py-6 text-center text-sm leading-6 text-ink/60">
+              まずは「おすわり」など、今練習しているコマンドを1つ登録しましょう。
+            </p>
+          )}
+        </section>
+
+        <div className="space-y-5">
+          <section className="card space-y-5 p-5 md:p-6">
+            <div>
+              <p className="text-sm font-semibold text-indigo-600">コマンド習得・トレーニング計画</p>
+              <h3 className="mt-1 text-2xl font-bold">今日の練習を記録</h3>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+              <div className="rounded-3xl bg-indigo-50 px-4 py-4">
+                <p className="text-xs font-semibold text-indigo-700">習得中のコマンド</p>
+                <p className="mt-2 text-3xl font-bold text-indigo-800">{trainingCommands.length}<span className="text-base">個</span></p>
+              </div>
+              <div className="rounded-3xl bg-orange-50 px-4 py-4">
+                <p className="text-xs font-semibold text-orange-700">連続トレーニング</p>
+                <p className="mt-2 text-3xl font-bold text-orange-800">{todaysPractices.length > 0 ? "1" : "0"}<span className="text-base">日</span></p>
+              </div>
+              <div className="rounded-3xl bg-emerald-50 px-4 py-4">
+                <p className="text-xs font-semibold text-emerald-700">次の練習予定</p>
+                <p className="mt-2 text-2xl font-bold text-emerald-800">今日</p>
+              </div>
+            </div>
+
+            <PracticeForm />
+          </section>
+
+          <section className="card space-y-4 p-5 md:p-6">
+            <h3 className="text-xl font-bold">習得中リスト</h3>
+            {trainingCommands.length > 0 ? (
+              <div className="space-y-3">
+                {trainingCommands.slice(0, 4).map((command) => {
+                  const stats = buildCommandStats(command, data.commandPracticeRecords);
+
+                  return (
+                    <div key={command.id} className="rounded-3xl border border-line bg-white p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-bold">{command.name}</p>
+                          <p className="mt-1 text-sm text-ink/60">合図 {command.cueType}</p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusBadgeClassName(command.status)}`}>
+                          {command.status}
+                        </span>
+                      </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-cream">
+                        <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.min(stats.successRate, 100)}%` }} />
+                      </div>
+                      <p className="mt-2 text-sm font-semibold text-ink/65">成功率 {stats.successRate}%</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="rounded-3xl bg-emerald-50 px-4 py-4 text-sm font-semibold leading-6 text-emerald-700">
+                登録済みコマンドはすべて習得扱いです。レオン、かなり優秀です。
+              </p>
+            )}
+          </section>
         </div>
+      </div>
 
-        <CommandForm />
-
-        {data.dogCommands.length > 0 ? (
-          <div className="space-y-3">
-            {data.dogCommands.map((command) => {
-              const stats = buildCommandStats(command, data.commandPracticeRecords);
-              const isEditing = editingCommandId === command.id;
+      <section className="card space-y-4 p-5 md:p-6">
+        <h3 className="text-xl font-bold">特訓履歴</h3>
+        {data.commandPracticeRecords.length > 0 ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {data.commandPracticeRecords.map((record) => {
+              const command = data.dogCommands.find((item) => item.id === record.commandId);
+              const successRate = record.attempts > 0 ? Math.round((record.successes / record.attempts) * 100) : 0;
+              const isEditing = editingPracticeId === record.id;
 
               return (
-                <div key={command.id} className="rounded-3xl bg-cream p-4">
+                <section key={record.id} className="space-y-3 rounded-3xl border border-line bg-white p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-lg font-semibold">{command.name}</p>
-                      <p className="mt-1 text-sm text-ink/60">
-                        {command.status} / 合図 {command.cueType}
+                    <div>
+                      <p className="text-sm text-ink/55">{formatDate(record.date, { year: "numeric", month: "numeric", day: "numeric" })}</p>
+                      <h4 className="mt-1 text-xl font-bold">{command?.name ?? "削除済みコマンド"}</h4>
+                      <p className="mt-1 text-sm text-ink/65">
+                        {record.durationMinutes}分 / {record.successes}回成功 / {record.attempts}回中
                       </p>
                     </div>
-                    <div className="rounded-2xl bg-white px-3 py-2 text-right">
-                      <p className="text-xs text-ink/55">成功率</p>
-                      <p className="text-lg font-semibold">{stats.successRate}%</p>
-                    </div>
+                    <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-bold text-indigo-700">{successRate}%</span>
                   </div>
 
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
-                    <div className="h-full rounded-full bg-moss" style={{ width: `${Math.min(stats.successRate, 100)}%` }} />
-                  </div>
+                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getFocusBadgeClassName(record.focusLevel)}`}>
+                    集中度 {record.focusLevel}
+                  </span>
+                  {record.memo ? <p className="rounded-3xl bg-cream px-4 py-3 text-sm leading-6 text-ink/65">{record.memo}</p> : null}
 
-                  <p className="mt-3 text-sm leading-6 text-ink/65">
-                    最終練習: {stats.latestDate ? formatDate(stats.latestDate, { year: "numeric", month: "numeric", day: "numeric" }) : "まだなし"}
-                  </p>
-                  {command.memo ? <p className="mt-2 rounded-2xl bg-white/70 px-3 py-2 text-sm leading-6 text-ink/65">{command.memo}</p> : null}
-
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button type="button" className="button-secondary w-full px-3 py-2 text-sm" onClick={() => setEditingCommandId(isEditing ? null : command.id)}>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" className="button-secondary w-full px-3 py-2 text-sm" onClick={() => setEditingPracticeId(isEditing ? null : record.id)}>
                       編集
                     </button>
                     <button
                       type="button"
                       className="button-secondary w-full px-3 py-2 text-sm"
                       onClick={() => {
-                        if (window.confirm(`${command.name} と関連する練習記録を削除しますか？`)) {
-                          deleteDogCommand(command.id);
+                        if (window.confirm("この練習記録を削除しますか？")) {
+                          deleteCommandPracticeRecord(record.id);
                         }
                       }}
                     >
@@ -458,79 +627,15 @@ export function CommandTrainingManager() {
                     </button>
                   </div>
 
-                  {isEditing && editingCommand ? (
-                    <div className="mt-3">
-                      <CommandForm initialCommand={editingCommand} onCancel={() => setEditingCommandId(null)} />
-                    </div>
+                  {isEditing && editingPractice ? (
+                    <PracticeForm editingRecord={editingPractice} onCancel={() => setEditingPracticeId(null)} />
                   ) : null}
-                </div>
+                </section>
               );
             })}
           </div>
         ) : (
-          <p className="rounded-3xl bg-cream px-4 py-4 text-sm leading-6 text-ink/60">
-            まずは「おすわり」など、今練習しているコマンドを1つ登録しましょう。
-          </p>
-        )}
-      </section>
-
-      <section className="card space-y-4 p-5">
-        <div>
-          <p className="text-sm text-ink/60">今日の特訓</p>
-          <h3 className="mt-1 text-xl font-semibold">練習を記録</h3>
-        </div>
-        <PracticeForm />
-      </section>
-
-      <section className="space-y-3">
-        <h3 className="text-lg font-semibold">特訓履歴</h3>
-        {data.commandPracticeRecords.length > 0 ? (
-          data.commandPracticeRecords.map((record) => {
-            const command = data.dogCommands.find((item) => item.id === record.commandId);
-            const successRate = record.attempts > 0 ? Math.round((record.successes / record.attempts) * 100) : 0;
-            const isEditing = editingPracticeId === record.id;
-
-            return (
-              <section key={record.id} className="card space-y-3 p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-ink/55">{formatDate(record.date, { year: "numeric", month: "numeric", day: "numeric" })}</p>
-                    <h4 className="mt-1 text-xl font-semibold">{command?.name ?? "削除済みコマンド"}</h4>
-                    <p className="mt-1 text-sm text-ink/65">
-                      {record.durationMinutes}分 / {record.successes}回成功 / {record.attempts}回中
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-cream px-3 py-1 text-sm font-semibold text-ink/70">{successRate}%</span>
-                </div>
-
-                <p className="text-sm text-ink/60">集中度: {record.focusLevel}</p>
-                {record.memo ? <p className="rounded-3xl bg-cream px-4 py-3 text-sm leading-6 text-ink/65">{record.memo}</p> : null}
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" className="button-secondary w-full px-3 py-2 text-sm" onClick={() => setEditingPracticeId(isEditing ? null : record.id)}>
-                    編集
-                  </button>
-                  <button
-                    type="button"
-                    className="button-secondary w-full px-3 py-2 text-sm"
-                    onClick={() => {
-                      if (window.confirm("この練習記録を削除しますか？")) {
-                        deleteCommandPracticeRecord(record.id);
-                      }
-                    }}
-                  >
-                    削除
-                  </button>
-                </div>
-
-                {isEditing && editingPractice ? (
-                  <PracticeForm editingRecord={editingPractice} onCancel={() => setEditingPracticeId(null)} />
-                ) : null}
-              </section>
-            );
-          })
-        ) : (
-          <section className="card p-5 text-sm leading-6 text-ink/60">
+          <section className="rounded-3xl bg-cream p-5 text-sm leading-6 text-ink/60">
             まだ特訓履歴はありません。短くできた日だけでも残していきましょう。
           </section>
         )}

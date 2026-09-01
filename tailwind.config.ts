@@ -11,6 +11,7 @@ const config: Config = {
       colors: {
         cream: "#f7f2ea",
         sand: "#e7dccd",
+        line: "#e8e1d8",
         ink: "#2f2a25",
         warm: "#c98b61",
         moss: "#6f7d5b"
