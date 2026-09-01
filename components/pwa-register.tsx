@@ -23,7 +23,29 @@ export function PwaRegister() {
 
     navigator.serviceWorker
       .register("/sw.js")
-      .then((registration) => registration.update())
+      .then((registration) => {
+        registration.update();
+
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+
+        registration.addEventListener("updatefound", () => {
+          const installingWorker = registration.installing;
+          if (!installingWorker) {
+            return;
+          }
+
+          installingWorker.addEventListener("statechange", () => {
+            if (
+              installingWorker.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
+              installingWorker.postMessage({ type: "SKIP_WAITING" });
+            }
+          });
+        });
+      })
       .catch((error) => {
         console.error("Service Worker の登録に失敗しました", error);
       });

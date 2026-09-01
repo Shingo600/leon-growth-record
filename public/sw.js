@@ -1,15 +1,22 @@
-const CACHE_NAME = "leon-growth-record-v2";
+const CACHE_NAME = "leon-growth-record-v3";
 const APP_SHELL = [
   "/",
   "/records",
   "/calendar",
   "/health",
+  "/commands",
   "/profile",
   "/expenses",
   "/icon-192.svg",
   "/icon-512.svg",
   "/apple-touch-icon.svg"
 ];
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
