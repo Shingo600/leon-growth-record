@@ -1,7 +1,8 @@
-const CACHE_NAME = "leon-growth-record-v6";
+const CACHE_NAME = "leon-growth-record-v7";
 const APP_SHELL = [
   "/",
   "/records",
+  "/meals",
   "/calendar",
   "/health",
   "/commands",

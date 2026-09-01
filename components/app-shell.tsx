@@ -12,6 +12,7 @@ import { getAgeText, getUpcomingEvents } from "@/lib/utils";
 const navItems = [
   { href: "/", label: "ダッシュボード", shortLabel: "ホーム", icon: "⌂" },
   { href: "/records", label: "体重記録", shortLabel: "記録", icon: "▣" },
+  { href: "/meals", label: "ごはん記録", shortLabel: "ごはん", icon: "◉" },
   { href: "/calendar", label: "予定・カレンダー", shortLabel: "予定", icon: "□" },
   { href: "/health", label: "健康記録", shortLabel: "健康", icon: "♡" },
   { href: "/commands", label: "コマンド", shortLabel: "特訓", icon: "✣" },

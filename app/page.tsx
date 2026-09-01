@@ -113,7 +113,7 @@ export default function HomePage() {
             ) : null}
           </Link>
 
-          <section className="rounded-3xl border border-line bg-white p-5">
+          <Link href="/meals" className="rounded-3xl border border-line bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-card">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-bold text-ink/70">ごはん</p>
               <span className="rounded-xl bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{completedMealTypes.size}/4</span>
@@ -134,7 +134,7 @@ export default function HomePage() {
                 </span>
               ))}
             </div>
-          </section>
+          </Link>
 
           <section className="rounded-3xl border border-line bg-white p-5">
             <div className="flex items-center justify-between gap-3">
