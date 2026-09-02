@@ -113,7 +113,7 @@ export function BackupManager() {
       <div>
         <h3 className="text-lg font-semibold">データ管理</h3>
         <p className="mt-1 text-sm leading-6 text-ink/60">
-          このアプリは今のところ端末ごとに保存されます。PCと携帯で同じデータにしたいときは、バックアップを書き出して復元してください。
+          クラウド共有とは別に、手元へバックアップを書き出せます。大きな編集前や端末変更前に保存しておくと安心です。
         </p>
       </div>
 
