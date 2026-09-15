@@ -23,6 +23,10 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
     profile: {
       ...defaultAppData.profile,
       ...raw.profile,
+      targetWeight:
+        typeof raw.profile?.targetWeight === "number"
+          ? raw.profile.targetWeight
+          : raw.profile?.currentWeight ?? defaultAppData.profile.targetWeight,
       dailyGoals: {
         ...defaultAppData.profile.dailyGoals,
         ...raw.profile?.dailyGoals

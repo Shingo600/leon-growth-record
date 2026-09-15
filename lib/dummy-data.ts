@@ -8,6 +8,7 @@ export const sampleAppData: AppData = {
     gender: "オス",
     arrivalDate: "2024-06-01",
     currentWeight: 3.8,
+    targetWeight: 4.2,
     photoUrl: "/placeholder-dog.svg",
     dailyGoals: {
       walkMinutes: 60,
@@ -236,6 +237,7 @@ export const defaultAppData: AppData = {
     gender: "オス",
     arrivalDate: "",
     currentWeight: 0,
+    targetWeight: 0,
     photoUrl: "",
     dailyGoals: {
       walkMinutes: 60,

@@ -24,8 +24,9 @@ export default function RecordsPage() {
   const previousRecord = data.records[1];
   const currentWeight = latestRecord?.taijyuu ?? data.profile.currentWeight;
   const diffFromPrevious = latestRecord && previousRecord ? latestRecord.taijyuu - previousRecord.taijyuu : null;
-  const targetWeight = 20;
-  const targetProgress = Math.min(Math.round((currentWeight / targetWeight) * 100), 100);
+  const targetWeight = data.profile.targetWeight ?? 0;
+  const hasTargetWeight = targetWeight > 0;
+  const targetProgress = hasTargetWeight ? Math.min(Math.round((currentWeight / targetWeight) * 100), 100) : 0;
   const today = getTodayDateString();
 
   const filteredRecords = useMemo(() => {
@@ -92,11 +93,15 @@ export default function RecordsPage() {
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-orange-50 text-xl text-orange-700" aria-hidden="true">⚑</div>
             <p className="text-sm font-bold text-ink/70">目標体重</p>
           </div>
-          <p className="mt-5 text-5xl font-bold tracking-tight">{targetWeight.toFixed(1)}<span className="ml-1 text-xl">kg</span></p>
+          <p className="mt-5 text-5xl font-bold tracking-tight">
+            {hasTargetWeight ? targetWeight.toFixed(1) : "--"}<span className="ml-1 text-xl">kg</span>
+          </p>
           <div className="mt-5 h-3 overflow-hidden rounded-full bg-cream">
             <div className="h-full rounded-full bg-indigo-600" style={{ width: `${targetProgress}%` }} />
           </div>
-          <p className="mt-3 text-sm text-ink/55">達成率 {targetProgress}%</p>
+          <p className="mt-3 text-sm text-ink/55">
+            {hasTargetWeight ? `達成率 ${targetProgress}%` : "プロフィール設定で目標体重を入力できます"}
+          </p>
         </div>
       </section>
 

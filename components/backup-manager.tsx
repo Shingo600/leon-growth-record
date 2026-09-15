@@ -61,6 +61,7 @@ export function BackupManager() {
         birthday: "",
         arrivalDate: "",
         currentWeight: 0,
+        targetWeight: 0,
         photoUrl: "",
         catchPhrase: "今日もやさしく見守ろう"
       },

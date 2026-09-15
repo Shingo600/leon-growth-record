@@ -16,6 +16,7 @@ type ProfileFormState = {
   gender: DogGender;
   arrivalDate: string;
   currentWeight: string;
+  targetWeight: string;
   photoUrl: string;
   catchPhrase: string;
   walkGoal: string;
@@ -31,6 +32,7 @@ function createFormState(data: ReturnType<typeof useAppData>["data"]): ProfileFo
     gender: data.profile.gender,
     arrivalDate: data.profile.arrivalDate,
     currentWeight: String(data.profile.currentWeight),
+    targetWeight: String(data.profile.targetWeight ?? data.profile.currentWeight ?? 0),
     photoUrl: data.profile.photoUrl,
     catchPhrase: data.profile.catchPhrase,
     walkGoal: String(data.profile.dailyGoals.walkMinutes),
@@ -100,6 +102,7 @@ export function ProfileForm() {
           gender: form.gender,
           arrivalDate: form.arrivalDate,
           currentWeight: Number(form.currentWeight),
+          targetWeight: Number(form.targetWeight),
           photoUrl: nextPhotoUrl,
           catchPhrase: form.catchPhrase,
           dailyGoals: {
@@ -241,6 +244,25 @@ export function ProfileForm() {
           onChange={(event) => setForm((current) => ({ ...current, currentWeight: event.target.value }))}
           required
         />
+      </div>
+
+      <div>
+        <label className="label" htmlFor="profile-target-weight">
+          目標体重
+        </label>
+        <input
+          id="profile-target-weight"
+          className="input"
+          type="number"
+          min="0"
+          step="0.1"
+          value={form.targetWeight}
+          onChange={(event) => setForm((current) => ({ ...current, targetWeight: event.target.value }))}
+          required
+        />
+        <p className="mt-2 text-xs leading-5 text-ink/55">
+          体重記録画面の目標体重と達成率に反映されます。
+        </p>
       </div>
 
       <div className="space-y-4 rounded-3xl bg-cream px-4 py-4">

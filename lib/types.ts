@@ -35,6 +35,7 @@ export type DogProfile = {
   gender: DogGender;
   arrivalDate: string;
   currentWeight: number;
+  targetWeight: number;
   photoUrl: string;
   dailyGoals: DailyGoals;
   catchPhrase: string;

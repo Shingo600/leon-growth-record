@@ -19,6 +19,7 @@ export default function ProfilePage() {
   const goals = data.profile.dailyGoals;
   const goalTotal = goals.walkMinutes + goals.intelligenceMinutes + goals.trainingMinutes;
   const latestFood = data.foodItems[0];
+  const targetWeight = data.profile.targetWeight ?? 0;
 
   return (
     <div className="space-y-5">
@@ -59,6 +60,7 @@ export default function ProfilePage() {
               <ProfileMetric label="誕生日" value={birthdayText} tone="amber" />
               <ProfileMetric label="お迎え日" value={arrivalDateText} tone="orange" />
               <ProfileMetric label="現在体重" value={`${data.profile.currentWeight || 0}kg`} tone="emerald" />
+              <ProfileMetric label="目標体重" value={targetWeight > 0 ? `${targetWeight}kg` : "未設定"} tone="rose" />
               <ProfileMetric label="活動目標" value={`${goalTotal}分/日`} tone="indigo" />
             </dl>
           </div>
@@ -102,12 +104,13 @@ export default function ProfilePage() {
   );
 }
 
-function ProfileMetric({ label, value, tone }: { label: string; value: string; tone: "indigo" | "amber" | "orange" | "emerald" }) {
+function ProfileMetric({ label, value, tone }: { label: string; value: string; tone: "indigo" | "amber" | "orange" | "emerald" | "rose" }) {
   const toneClassName = {
     indigo: "bg-indigo-50 text-indigo-700",
     amber: "bg-amber-50 text-amber-700",
     orange: "bg-orange-50 text-orange-700",
-    emerald: "bg-emerald-50 text-emerald-700"
+    emerald: "bg-emerald-50 text-emerald-700",
+    rose: "bg-rose-50 text-rose-700"
   }[tone];
 
   return (
