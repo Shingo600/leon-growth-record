@@ -1,4 +1,4 @@
-const CACHE_NAME = "leon-growth-record-v13";
+const CACHE_NAME = "leon-growth-record-v14";
 const APP_SHELL = [
   "/",
   "/records",
@@ -8,6 +8,7 @@ const APP_SHELL = [
   "/commands",
   "/profile",
   "/expenses",
+  "/outings",
   "/icon-192.svg",
   "/icon-512.svg",
   "/apple-touch-icon.svg"
@@ -42,14 +43,20 @@ self.addEventListener("fetch", (event) => {
   if (requestUrl.origin !== self.location.origin) {
     return;
   }
+  // Authentication, quotas and private data must never fall back to an old response.
+  if (requestUrl.pathname.startsWith("/api/")) {
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
-        });
+        if (networkResponse.ok) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
         return networkResponse;
       })
       .catch(async () => {

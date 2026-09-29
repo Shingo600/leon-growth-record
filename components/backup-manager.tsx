@@ -2,6 +2,7 @@
 
 import type { ChangeEvent } from "react";
 import { useState } from "react";
+import Link from "next/link";
 import { useAppData } from "@/components/app-provider";
 import { sampleAppData } from "@/lib/dummy-data";
 import { createBackupData, parseBackupData } from "@/lib/storage";
@@ -126,6 +127,12 @@ export function BackupManager() {
           サンプルデータを入れる
         </button>
       </div>
+
+      <p className="text-sm leading-6 text-ink/60">
+        おでかけの「行きたい場所」は別保存です。書き出し・復元は
+        <Link href="/outings" className="font-semibold text-indigo-700 underline">おでかけタブの「行きたい」</Link>
+        から行えます。下の初期化では行きたい場所は削除されません。
+      </p>
 
       <div>
         <label className="label" htmlFor="backup-import">バックアップを復元</label>

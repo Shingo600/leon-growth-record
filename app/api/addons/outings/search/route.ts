@@ -1,0 +1,28 @@
+import { authorize, body, config, database, fail, json, OutingsError } from "@/lib/addons/outings/server";
+import { parseSearch } from "@/lib/addons/outings/validation";
+import { searchPlaces } from "@/lib/addons/outings/provider";
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
+export async function POST(request: Request) {
+  try {
+    authorize(request, true);
+    const settings = config();
+    if (!settings.enabled || !settings.key) throw new OutingsError("AI検索はまだ利用できません。", 503);
+    let input;
+    try { input = parseSearch(await body(request)); }
+    catch (error) { throw error instanceof OutingsError ? error : new OutingsError(error instanceof Error ? error.message : "入力を確認してください。"); }
+    const { db, workspace } = database();
+    const reservation = await db.rpc("reserve_outing_search", { p_workspace: workspace, p_request: input.requestId, p_limit: settings.limit });
+    if (reservation.error || typeof reservation.data?.allowed !== "boolean") throw new OutingsError("利用回数を確認できないため、検索を開始できませんでした。", 503);
+    if (!reservation.data.allowed) throw new OutingsError(reservation.data.reason === "duplicate" ? "この検索はすでに受け付けています。再検索する場合はもう一度ボタンを押してください。" : "今日の検索回数の上限に達しました。明日またお試しください。", reservation.data.reason === "duplicate" ? 409 : 429);
+    try {
+      const result = await searchPlaces(input, settings.key, settings.model);
+      const { requestId: _, ...query } = input;
+      return json({ ...result, query, remaining: reservation.data.remaining });
+    } catch (error) {
+      // A provider may bill even when the connection fails. Never refund/retry automatically.
+      return json({ message: error instanceof Error && error.name === "TimeoutError" ? "検索に時間がかかっています。少し時間をおいて再度お試しください。" : error instanceof Error ? error.message : "検索に失敗しました。", remaining: reservation.data.remaining }, 502);
+    }
+  } catch (error) { return fail(error); }
+}

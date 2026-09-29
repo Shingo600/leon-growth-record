@@ -1,0 +1,20 @@
+export const genres = ["すべて", "ドッグラン", "公園・散歩", "カフェ・飲食店", "自然・アウトドア", "観光・おでかけ", "宿泊"] as const;
+export const filters = ["大型犬OK", "屋内", "駐車場あり", "無料", "貸切"] as const;
+export type Genre = typeof genres[number];
+export type Filter = typeof filters[number];
+export type SearchInput = { area: string; genre: Genre; filters: Filter[]; note: string; requestId: string };
+export type Source = { url: string; title: string };
+export type Place = {
+  name: string;
+  area: string;
+  genre: Genre;
+  description: string;
+  dogPolicy: string;
+  conditions: { label: Filter; status: "yes" | "unknown"; detail: string }[];
+  sources: Source[];
+  needsCheck: boolean;
+  searchedAt: string;
+};
+export type Favorite = { id: string; name: string; area: string; genre: Genre; url: string; memo: string; searchedAt: string; savedAt: string };
+export type SearchResult = { places: Place[]; searchedAt: string; query: Omit<SearchInput, "requestId">; remaining: number };
+export type OutingsStatus = { enabled: boolean; authenticated: boolean; ready: boolean; storageReady: boolean; remaining: number | null; message: string; cacheScope?: string };
