@@ -1,4 +1,4 @@
-export const genres = ["すべて", "ドッグラン", "公園・散歩", "カフェ・飲食店", "自然・アウトドア", "観光・おでかけ", "宿泊"] as const;
+export const genres = ["すべて", "ドッグラン", "公園・散歩", "カフェ・飲食店", "自然・アウトドア", "観光・おでかけ", "宿泊", "動物病院"] as const;
 export const filters = ["大型犬OK", "屋内", "駐車場あり", "無料", "貸切"] as const;
 export type Genre = typeof genres[number];
 export type Filter = typeof filters[number];

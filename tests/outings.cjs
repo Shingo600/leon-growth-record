@@ -73,9 +73,9 @@ test('unsafe schemes, credentials, loopback and private literal hosts are reject
     'http://[::ffff:127.0.0.1]', 'http://localhost', 'https://example.local', 'https://example.org:8443', 'https://example.org\n']) assert.equal(safeUrl(url), null, url);
   assert.equal(safeUrl('https://example.org/a?utm_source=x&id=1#part'), 'https://example.org/a?id=1');
 });
-test('all seven genres and five filters work, malformed requests fail', () => {
+test('all eight genres and five filters work, malformed requests fail', () => {
   const { genres, filters } = require('../lib/addons/outings/types.ts');
-  assert.equal(genres.length, 7);
+  assert.equal(genres.length, 8);
   for (const genre of genres) assert.equal(parseSearch({ ...input, genre, filters: [...filters] }).genre, genre);
   for (const patch of [{ area: '' }, { genre: 'unknown' }, { filters: ['unknown'] }, { requestId: 'bad' }, { note: 'a'.repeat(501) }]) assert.throws(() => parseSearch({ ...input, ...patch }));
 });
@@ -86,10 +86,14 @@ test('only real tool-source URLs survive and unsupported claims become unknown',
   const result = parseSearchResponse(answer([uncertain]), input, new Date().toISOString())[0];
   assert.equal(result.needsCheck, true); assert.equal(result.conditions[0].status, 'unknown');
 });
-test('known disallowed facilities and different genres are excluded', () => {
-  for (const patch of [{ dogStatus: 'no' }, { genre: '宿泊' }, { conditions: { '大型犬OK': { status: 'no' } } }]) {
+test('known disallowed facilities are excluded, but a sourced neighboring genre remains a check-needed candidate', () => {
+  for (const patch of [{ dogStatus: 'no' }, { conditions: { '大型犬OK': { status: 'no' } } }]) {
     assert.equal(parseSearchResponse(answer([{ ...place, ...patch }]), input, new Date().toISOString()).length, 0);
   }
+  const neighboring = parseSearchResponse(answer([{ ...place, genre: '自然・アウトドア' }]), input, new Date().toISOString());
+  assert.equal(neighboring.length, 1);
+  assert.equal(neighboring[0].needsCheck, true);
+  assert.equal(neighboring[0].genre, '自然・アウトドア');
 });
 test('no silent fallback to model knowledge, partial output, or malformed JSON', () => {
   assert.throws(() => parseSearchResponse({ ...answer(), status: 'incomplete' }, input, ''));
