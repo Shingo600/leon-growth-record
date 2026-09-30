@@ -17,7 +17,7 @@ require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 Module._resolveFilename = function (name, ...args) {
   return originalResolve.call(this, name.startsWith('@/') ? path.join(root, name.slice(2)) : name, ...args);
 };
-let rpcResult = { data: { allowed: true, remaining: 9 }, error: null };
+let rpcResult = { data: { allowed: true, remaining: null }, error: null };
 let rpcCalls = 0;
 let lastRpc;
 let tableResult = { data: [], error: null };
@@ -63,7 +63,7 @@ function request(payload = input, authenticated = true) {
 function configured() {
   Object.assign(process.env, { LEON_SYNC_PASSCODE: 'test-only-passcode', LEON_WORKSPACE_ID: 'test-workspace',
     SUPABASE_URL: 'https://test-project.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'test-only-key',
-    OPENAI_API_KEY: 'test-only-ai-key', OUTINGS_ADDON_ENABLED: 'true', OUTINGS_DAILY_LIMIT: '10' });
+    OPENAI_API_KEY: 'test-only-ai-key', OUTINGS_ADDON_ENABLED: 'true' });
 }
 after(() => { global.fetch = originalFetch; Module._load = originalLoad; Module._resolveFilename = originalResolve; process.env = env; });
 
@@ -118,17 +118,17 @@ test('cross-origin mutations and unauthenticated calls are rejected', async () =
   rpcCalls = 0; const response = await POST(request(input, false));
   assert.equal(response.status, 401); assert.equal(rpcCalls, 0);
 });
-test('disabled and invalid-input search never reserves quota or calls AI', async () => {
+test('disabled and invalid-input search never reserves a request or calls AI', async () => {
   configured(); rpcCalls = 0; let calls = 0; global.fetch = async () => { calls++; throw new Error('Unexpected AI call'); };
   process.env.OUTINGS_ADDON_ENABLED = 'false'; assert.equal((await POST(request())).status, 503);
   process.env.OUTINGS_ADDON_ENABLED = 'true'; assert.equal((await POST(request({ ...input, area: '' }))).status, 400);
   assert.equal(rpcCalls, 0); assert.equal(calls, 0);
 });
-test('database failure, quota exhaustion and duplicate requests fail closed', async () => {
+test('database failure, unexpected denial and duplicate requests fail closed', async () => {
   configured(); let calls = 0; global.fetch = async () => { calls++; throw new Error('Unexpected AI call'); };
   for (const [value, expected] of [
     [{ error: { message: 'db down' }, data: null }, 503],
-    [{ error: null, data: { allowed: false, reason: 'limit' } }, 429],
+    [{ error: null, data: { allowed: false, reason: 'limit' } }, 503],
     [{ error: null, data: { allowed: false, reason: 'duplicate' } }, 409]
   ]) { rpcResult = value; assert.equal((await POST(request())).status, expected); }
   assert.equal(calls, 0);
@@ -143,15 +143,16 @@ test('provider receives only search fields, forced search and a tool limit', asy
   };
   const result = await searchPlaces(input, 'test-key', 'gpt-4.1-mini'); assert.equal(result.places.length, 1);
 });
-test('successful requests consume quota once; provider failures are not retried', async () => {
-  configured(); rpcResult = { data: { allowed: true, remaining: 9 }, error: null }; rpcCalls = 0;
+test('successful requests reserve once without a daily limit; provider failures are not retried', async () => {
+  configured(); rpcResult = { data: { allowed: true, remaining: null }, error: null }; rpcCalls = 0;
   let calls = 0; global.fetch = async () => { calls++; return Response.json(answer()); };
   const response = await POST(request()); assert.equal(response.status, 200);
-  assert.equal((await response.json()).remaining, 9); assert.equal(rpcCalls, 1); assert.equal(calls, 1);
+  assert.equal((await response.json()).remaining, undefined); assert.equal(rpcCalls, 1); assert.equal(calls, 1);
+  assert.equal(lastRpc.args.p_limit, 0);
   assert.match(response.headers.get('cache-control'), /no-store/);
   global.fetch = async () => { calls++; return Response.json({ error: 'secret upstream diagnostic' }, { status: 500 }); };
   const failure = await POST(request()); const payload = await failure.json();
-  assert.equal(failure.status, 502); assert.equal(payload.remaining, 9); assert.equal(calls, 2);
+  assert.equal(failure.status, 502); assert.equal(payload.remaining, undefined); assert.equal(calls, 2);
   assert.ok(!JSON.stringify(payload).includes('secret upstream'));
 });
 
@@ -196,9 +197,9 @@ test('status fails closed for missing database tables and enables search only wi
   const failure = await (await statusRoute.GET(request())).json();
   assert.equal(failure.ready, false); assert.equal(failure.storageReady, false);
   assert.ok(!JSON.stringify(failure).includes('private-db-error'));
-  tableResult = { data: { request_ids: ['one', 'two'] }, error: null };
+  tableResult = { data: { workspace_id: 'test-workspace' }, error: null };
   const ready = await (await statusRoute.GET(request())).json();
-  assert.equal(ready.ready, true); assert.equal(ready.remaining, 8);
+  assert.equal(ready.ready, true); assert.equal(ready.remaining, undefined);
   delete process.env.OPENAI_API_KEY;
   const unconfigured = await (await statusRoute.GET(request())).json();
   assert.equal(unconfigured.ready, false); assert.equal(unconfigured.storageReady, true);

@@ -3,7 +3,6 @@
 const http = require('node:http');
 const { createHash } = require('node:crypto');
 const favorites = new Map();
-let remaining = 10;
 const source = { url: 'https://example.org/dog-park', title: 'UI検証用の架空施設' };
 const server = http.createServer(async (req, res) => {
   if (!req.url.startsWith('/api/addons/outings/')) {
@@ -19,13 +18,12 @@ const server = http.createServer(async (req, res) => {
   for await (const part of req) { body += part; if (body.length > 1500000) { res.writeHead(413); res.end('{}'); return; } }
   const payload = body ? JSON.parse(body) : {};
   if (req.url.endsWith('/status')) {
-    res.end(JSON.stringify({ enabled: true, authenticated: true, ready: true, storageReady: true, remaining, message: 'UI検証用データです。実際の施設ではありません。', cacheScope: 'ui-fixture' }));
+    res.end(JSON.stringify({ enabled: true, authenticated: true, ready: true, storageReady: true, message: 'UI検証用データです。実際の施設ではありません。', cacheScope: 'ui-fixture' }));
   } else if (req.url.endsWith('/search')) {
-    remaining = Math.max(0, remaining - 1);
     const searchedAt = new Date().toISOString();
     const { requestId, ...query } = payload;
     const base = { area: payload.area, genre: 'ドッグラン', searchedAt, description: '木陰でのんびり休める広場をイメージした表示サンプルです。', dogPolicy: '犬同伴可の表示例です。', sources: [source] };
-    res.end(JSON.stringify({ remaining, query, searchedAt, places: [
+    res.end(JSON.stringify({ query, searchedAt, places: [
       { ...base, name: '木もれびドッグガーデン（架空）', needsCheck: false, conditions: payload.filters.map(label => ({ label, status: 'yes', detail: '検証用の条件' })) },
       { ...base, name: '湖畔の遊歩道（架空）', needsCheck: true, dogPolicy: '犬同伴の利用条件は要確認です。', sources: [{ ...source, url: 'https://example.org/lakeside' }], conditions: payload.filters.map(label => ({ label, status: 'unknown', detail: '要確認' })) }
     ] }));

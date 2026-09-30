@@ -8,7 +8,7 @@ import { parseBackup, parseFavorite, safeUrl } from "@/lib/addons/outings/valida
 const endpoint = "/api/addons/outings";
 const lastScopeKey = "leon-outings-last-scope";
 const cacheKey = (scope: string) => `leon-outings-favorites-v1:${scope}`;
-const initialStatus: OutingsStatus = { enabled: false, authenticated: false, ready: false, storageReady: false, remaining: null, message: "利用状況を確認しています。" };
+const initialStatus: OutingsStatus = { enabled: false, authenticated: false, ready: false, storageReady: false, message: "利用状況を確認しています。" };
 const dateLabel = (date: string) => new Date(date).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 function Icon({ name, className = "h-5 w-5" }: { name: "pin" | "search" | "heart" | "arrow" | "tree"; className?: string }) {
@@ -84,7 +84,6 @@ export function OutingsManager() {
     const payload = await response.json();
     if (!response.ok) {
       if (response.status === 401) setStatus(s => ({ ...s, authenticated: false, ready: false, storageReady: false }));
-      if (typeof payload.remaining === "number") setStatus(s => ({ ...s, remaining: payload.remaining }));
       throw new Error(payload.message || "処理に失敗しました。");
     }
     return payload;
@@ -165,8 +164,8 @@ export function OutingsManager() {
         <fieldset><legend className="label">ジャンル</legend><div className="flex flex-wrap gap-2">{genres.map(item => <button key={item} type="button" aria-pressed={genre === item} onClick={() => setGenre(item)} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-medium transition ${genre === item ? "border-indigo-600 bg-indigo-600 text-white" : "border-line bg-white text-ink/70 hover:border-indigo-300"}`}>{item}</button>)}</div></fieldset>
         <fieldset><legend className="label">こだわり条件 <span className="font-normal text-ink/50">複数選択できます</span></legend><div className="flex flex-wrap gap-2">{filters.map(item => <button key={item} type="button" aria-pressed={selected.includes(item)} onClick={() => setSelected(current => current.includes(item) ? current.filter(f => f !== item) : [...current, item])} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-medium ${selected.includes(item) ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-line bg-white text-ink/65"}`}>{selected.includes(item) ? "✓ " : ""}{item}</button>)}</div></fieldset>
         <div><label htmlFor="outings-note" className="label">希望をひとこと <span className="font-normal text-ink/50">任意</span></label><input id="outings-note" className="input !text-base" placeholder="例：のんびり過ごせる場所がいいです" maxLength={500} value={note} onChange={e => setNote(e.target.value)} /></div>
-        <button disabled={!status.ready || status.remaining === 0 || disabled || !area.trim()} className="button-primary min-h-12 w-full gap-2 !text-base disabled:cursor-not-allowed disabled:opacity-40"><Icon name="search" />{searching ? "おでかけ先を探しています…" : "AIで探す"}</button>
-        <p className="text-center text-xs leading-5 text-ink/55">{status.remaining !== null ? `今日の検索：あと${status.remaining}回（家族共通） / ` : ""}検索ボタンを押したときだけAIを利用します。<br />地域・条件・希望文をOpenAIに送信します。個人情報は入力しないでください。</p>
+        <button disabled={!status.ready || disabled || !area.trim()} className="button-primary min-h-12 w-full gap-2 !text-base disabled:cursor-not-allowed disabled:opacity-40"><Icon name="search" />{searching ? "おでかけ先を探しています…" : "AIで探す"}</button>
+        <p className="text-center text-xs leading-5 text-ink/55">検索ボタンを押したときだけAIを利用し、検索ごとにAPI料金が発生する場合があります。<br />地域・条件・希望文をOpenAIに送信します。個人情報は入力しないでください。</p>
       </form>
       {searching && <div role="status" className="card p-6 text-center text-sm text-ink/65">条件に合う場所と参照サイトを探しています。<br />少し時間がかかる場合があります。</div>}
       {result ? <div className="space-y-5"><p className="text-xs leading-6 text-ink/60">検索条件：{result.query.area} / {result.query.genre} / {result.query.filters.join("・") || "条件指定なし"}{result.query.note && ` / ${result.query.note}`}<br />検索日時：{dateLabel(result.searchedAt)}。条件を変更したら「AIで探す」で再検索できます。</p>

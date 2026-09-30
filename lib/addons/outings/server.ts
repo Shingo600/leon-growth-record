@@ -19,9 +19,7 @@ export function authenticated(request: Request) {
 export function config() {
   const key = process.env.OPENAI_API_KEY?.trim() ?? "";
   const model = process.env.OUTINGS_AI_MODEL?.trim() || "gpt-4.1-mini";
-  const limit = Number(process.env.OUTINGS_DAILY_LIMIT || "10");
-  return { key, model, limit: Number.isInteger(limit) && limit > 0 && limit <= 100 ? limit : 10,
-    enabled: process.env.OUTINGS_ADDON_ENABLED === "true" };
+  return { key, model, enabled: process.env.OUTINGS_ADDON_ENABLED === "true" };
 }
 export function authorize(request: Request, mutation = false) {
   if (!authenticated(request)) throw new OutingsError("家族の同期コードを入力してください。", 401);

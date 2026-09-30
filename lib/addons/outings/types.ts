@@ -16,5 +16,5 @@ export type Place = {
   searchedAt: string;
 };
 export type Favorite = { id: string; name: string; area: string; genre: Genre; url: string; memo: string; searchedAt: string; savedAt: string };
-export type SearchResult = { places: Place[]; searchedAt: string; query: Omit<SearchInput, "requestId">; remaining: number };
-export type OutingsStatus = { enabled: boolean; authenticated: boolean; ready: boolean; storageReady: boolean; remaining: number | null; message: string; cacheScope?: string };
+export type SearchResult = { places: Place[]; searchedAt: string; query: Omit<SearchInput, "requestId"> };
+export type OutingsStatus = { enabled: boolean; authenticated: boolean; ready: boolean; storageReady: boolean; message: string; cacheScope?: string };
