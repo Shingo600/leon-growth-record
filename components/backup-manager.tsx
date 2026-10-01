@@ -129,6 +129,12 @@ export function BackupManager() {
       </div>
 
       <p className="text-sm leading-6 text-ink/60">
+        このJSONには写真ファイル本体は含まれません。アルバムの写真は
+        <Link href="/album" className="font-semibold text-indigo-700 underline">アルバム</Link>
+        で開き、「写真を保存」から別に手元へ残してください。
+      </p>
+
+      <p className="text-sm leading-6 text-ink/60">
         おでかけの「行きたい場所」は別保存です。書き出し・復元は
         <Link href="/outings" className="font-semibold text-indigo-700 underline">おでかけタブの「行きたい」</Link>
         から行えます。下の初期化では行きたい場所は削除されません。
