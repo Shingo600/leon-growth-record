@@ -56,7 +56,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: server.error }, { status: 503 });
   }
 
-  if (!ensureAuthorized(request)) {
+  if (!(await ensureAuthorized(request))) {
     return NextResponse.json({ message: "同期コードを入力してください。" }, { status: 401 });
   }
 
@@ -86,7 +86,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ message: server.error }, { status: 503 });
   }
 
-  if (!ensureAuthorized(request)) {
+  if (!(await ensureAuthorized(request))) {
     return NextResponse.json({ message: "同期コードを入力してください。" }, { status: 401 });
   }
 

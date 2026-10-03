@@ -15,9 +15,9 @@ export type AlbumRow = {
   created_at: string;
 };
 
-type AlbumClient = Extract<ReturnType<typeof getAlbumServer>, { ok: true }>["client"];
+type AlbumClient = Extract<Awaited<ReturnType<typeof getAlbumServer>>, { ok: true }>["client"];
 
-export function getAlbumServer(request: Request) {
+export async function getAlbumServer(request: Request) {
   const config = readServerSyncConfig();
   if (!config.isConfigured || !config.supabaseUrl || !config.serviceRoleKey || !config.workspaceId) {
     return { ok: false as const, status: 503, message: config.configError || "クラウド同期の設定が必要です。" };
@@ -29,7 +29,7 @@ export function getAlbumServer(request: Request) {
     .find((part) => part.startsWith(`${syncCookieName}=`))
     ?.slice(syncCookieName.length + 1);
 
-  if (!verifySyncSessionToken(token)) {
+  if (!(await verifySyncSessionToken(token))) {
     return { ok: false as const, status: 401, message: "同期コードを入力してからアルバムを使ってください。" };
   }
 

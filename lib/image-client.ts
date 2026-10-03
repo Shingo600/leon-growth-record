@@ -80,22 +80,21 @@ async function compressDataUrl(dataUrl: string) {
 }
 
 async function convertHeicToJpeg(file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const response = await fetch("/api/convert-heic", {
-    method: "POST",
-    body: formData
-  });
-
-  if (!response.ok) {
-    throw new Error("HEIC conversion failed");
+  // Safari can decode some HEIC files natively, without loading WASM.
+  const original = await readFileAsDataUrl(file);
+  try {
+    await loadImage(original);
+    return { dataUrl: original, fileName: file.name.replace(/\.(heic|heif)$/i, ".jpg") };
+  } catch {
+    try {
+      const { default: convert } = await import("heic-convert/browser");
+      const bytes = await convert({ buffer: new Uint8Array(await file.arrayBuffer()), format: "JPEG", quality: 0.85 });
+      const jpeg = new File([bytes], file.name.replace(/\.(heic|heif)$/i, ".jpg"), { type: "image/jpeg" });
+      return { dataUrl: await readFileAsDataUrl(jpeg), fileName: jpeg.name };
+    } catch {
+      throw new Error("HEIC画像を変換できませんでした。オンラインで画面を開き直すか、JPEG画像でお試しください。");
+    }
   }
-
-  return (await response.json()) as {
-    dataUrl: string;
-    fileName: string;
-  };
 }
 
 export async function prepareImageForStorage(file: File) {

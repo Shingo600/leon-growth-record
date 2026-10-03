@@ -10,12 +10,12 @@ async function list() {
   return result.data.map(row => ({ ...row.data, id: row.id, savedAt: row.saved_at }));
 }
 export async function GET(request: Request) {
-  try { authorize(request); return json({ favorites: await list() }); }
+  try { await authorize(request); return json({ favorites: await list() }); }
   catch (error) { return fail(error); }
 }
 export async function POST(request: Request) {
   try {
-    authorize(request, true);
+    await authorize(request, true);
     const payload = object(await body(request, 1500000));
     let items;
     try { items = payload.backup ? parseBackup(payload.backup) : [parseFavorite(payload.favorite)]; }
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 }
 export async function DELETE(request: Request) {
   try {
-    authorize(request, true);
+    await authorize(request, true);
     const payload = object(await body(request));
     if (typeof payload.id !== "string" || !/^[a-f0-9]{64}$/.test(payload.id)) throw new OutingsError("解除する場所を確認してください。");
     const { db, workspace } = database();

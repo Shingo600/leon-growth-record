@@ -21,8 +21,8 @@ export function config() {
   const model = process.env.OUTINGS_AI_MODEL?.trim() || "gpt-4.1-mini";
   return { key, model, enabled: process.env.OUTINGS_ADDON_ENABLED === "true" };
 }
-export function authorize(request: Request, mutation = false) {
-  if (!authenticated(request)) throw new OutingsError("家族の同期コードを入力してください。", 401);
+export async function authorize(request: Request, mutation = false) {
+  if (!(await authenticated(request))) throw new OutingsError("家族の同期コードを入力してください。", 401);
   if (mutation) {
     const origin = request.headers.get("origin");
     if (!origin || origin !== new URL(request.url).origin) throw new OutingsError("この画面からもう一度操作してください。", 403);

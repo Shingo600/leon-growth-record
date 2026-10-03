@@ -23,6 +23,12 @@ let lastRpc;
 let tableResult = { data: [], error: null };
 let tableScopes = [];
 Module._load = function (name, ...args) {
+  if (name === '@/lib/sync-auth') return {
+    readServerSyncConfig: () => ({ isConfigured: true, supabaseUrl: 'https://test-project.supabase.co',
+      serviceRoleKey: 'test-only-key', workspaceId: 'test-workspace' }),
+    syncCookieName: 'leon-sync-session',
+    verifySyncSessionToken: async token => token === 'test-only-opaque-session'
+  };
   if (name === '@supabase/supabase-js') return { createClient: () => ({
     rpc: async (name, args) => { rpcCalls++; lastRpc = { name, args }; return rpcResult; },
     from: () => {
@@ -44,7 +50,6 @@ const { body, authorize } = require('../lib/addons/outings/server.ts');
 const { POST } = require('../app/api/addons/outings/search/route.ts');
 const favoriteRoutes = require('../app/api/addons/outings/favorites/route.ts');
 const statusRoute = require('../app/api/addons/outings/status/route.ts');
-const { createSyncSessionToken } = require('../lib/sync-auth.ts');
 const input = { area: '横浜市', genre: 'ドッグラン', filters: ['大型犬OK'], note: '', requestId: '11111111-1111-4111-8111-111111111111' };
 const source = 'https://example.org/dog-park';
 const place = { name: 'テスト施設', area: '横浜市', genre: 'ドッグラン', description: 'テスト用の説明', dogStatus: 'yes', dogPolicy: '犬同伴可', dogSourceUrl: source, sourceUrls: [source], conditions: { '大型犬OK': { status: 'yes', detail: '大型犬用エリア', sourceUrl: source } } };
@@ -57,7 +62,7 @@ function answer(places = [place], sources = [source]) {
 function request(payload = input, authenticated = true) {
   return new Request('https://app.example/api/addons/outings/search', { method: 'POST', headers: {
     origin: 'https://app.example', 'content-type': 'application/json',
-    cookie: authenticated ? `leon-sync-session=${createSyncSessionToken('test-only-passcode')}` : ''
+    cookie: authenticated ? 'leon-sync-session=test-only-opaque-session' : ''
   }, body: JSON.stringify(payload) });
 }
 function configured() {
@@ -114,7 +119,7 @@ test('body limits apply even without a content-length header', async () => {
 });
 test('cross-origin mutations and unauthenticated calls are rejected', async () => {
   configured();
-  assert.throws(() => authorize(new Request('https://app.example', { headers: { cookie: `leon-sync-session=${createSyncSessionToken('test-only-passcode')}`, origin: 'https://evil.example', 'content-type': 'application/json' } }), true), e => e.status === 403);
+  await assert.rejects(authorize(new Request('https://app.example', { headers: { cookie: 'leon-sync-session=test-only-opaque-session', origin: 'https://evil.example', 'content-type': 'application/json' } }), true), e => e.status === 403);
   rpcCalls = 0; const response = await POST(request(input, false));
   assert.equal(response.status, 401); assert.equal(rpcCalls, 0);
 });

@@ -9,7 +9,7 @@ function failure(message: string, status: number) {
   return NextResponse.json({ message }, { status });
 }
 
-async function signedPhoto(client: ReturnType<typeof getAlbumServer> & { ok: true }, row: AlbumRow) {
+async function signedPhoto(client: Awaited<ReturnType<typeof getAlbumServer>> & { ok: true }, row: AlbumRow) {
   const [photo, thumbnail] = await Promise.all([
     client.client.storage.from(albumBucket).createSignedUrl(row.storage_path, 3600),
     client.client.storage.from(albumBucket).createSignedUrl(row.thumbnail_path, 3600)
@@ -28,7 +28,7 @@ async function signedPhoto(client: ReturnType<typeof getAlbumServer> & { ok: tru
 }
 
 export async function GET(request: Request) {
-  const server = getAlbumServer(request);
+  const server = await getAlbumServer(request);
   if (!server.ok) return failure(server.message, server.status);
 
   const pageValue = Number(new URL(request.url).searchParams.get("page") ?? "0");
@@ -77,7 +77,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const server = getAlbumServer(request);
+  const server = await getAlbumServer(request);
   if (!server.ok) return failure(server.message, server.status);
 
   const form = await request.formData().catch(() => null);
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const server = getAlbumServer(request);
+  const server = await getAlbumServer(request);
   if (!server.ok) return failure(server.message, server.status);
   const body = await request.json().catch(() => null) as { id?: unknown; favorite?: unknown; caption?: unknown } | null;
   if (!body || typeof body.id !== "string" || !/^[0-9a-f-]{36}$/i.test(body.id)) return failure("写真を指定してください。", 400);
@@ -145,7 +145,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const server = getAlbumServer(request);
+  const server = await getAlbumServer(request);
   if (!server.ok) return failure(server.message, server.status);
   const id = new URL(request.url).searchParams.get("id");
   if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return failure("写真を指定してください。", 400);

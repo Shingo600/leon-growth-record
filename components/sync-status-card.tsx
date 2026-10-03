@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAppData } from "@/components/app-provider";
 
 export function SyncStatusCard() {
-  const { connectSync, disconnectSync, saveError, storageMode, syncAuthRequired, syncMessage, syncStatus } = useAppData();
+  const { connectSync, disconnectSync, saveError, storageMode, syncAuthRequired, syncLogoutPending, syncMessage, syncStatus } = useAppData();
   const [passcode, setPasscode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPasscode, setShowPasscode] = useState(false);
@@ -84,15 +84,18 @@ export function SyncStatusCard() {
         </div>
       ) : null}
 
-      {storageMode === "cloud" ? (
+      {storageMode === "cloud" || syncLogoutPending ? (
         <button
           type="button"
-          onClick={() => {
-            void disconnectSync();
+          onClick={async () => {
+            setIsSubmitting(true);
+            try { await disconnectSync(); }
+            finally { setIsSubmitting(false); }
           }}
+          disabled={isSubmitting}
           className="mt-4 w-full rounded-2xl border border-line px-4 py-3 text-sm font-semibold text-ink transition hover:bg-cream"
         >
-          この端末をローカル保存に戻す
+          {syncLogoutPending ? "ログアウトを再試行" : "この端末をローカル保存に戻す"}
         </button>
       ) : null}
     </section>

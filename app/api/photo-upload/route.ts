@@ -59,7 +59,7 @@ async function ensureBucket() {
 }
 
 export async function POST(request: Request) {
-  if (!isAuthorized(request)) {
+  if (!(await isAuthorized(request))) {
     return NextResponse.json({ message: "同期コードを入力してから写真共有を使ってください。" }, { status: 401 });
   }
 

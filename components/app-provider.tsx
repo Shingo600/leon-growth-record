@@ -53,6 +53,7 @@ type AppContextValue = {
   syncStatus: SyncStatus;
   syncMessage: string;
   syncAuthRequired: boolean;
+  syncLogoutPending: boolean;
   connectSync: (passcode: string) => Promise<boolean>;
   disconnectSync: () => Promise<void>;
   replaceData: (data: AppData) => void;
@@ -159,6 +160,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncMessage, setSyncMessage] = useState("この端末に保存しています。");
   const [syncAuthRequired, setSyncAuthRequired] = useState(false);
+  const [syncLogoutPending, setSyncLogoutPending] = useState(false);
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -283,6 +285,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       syncStatus,
       syncMessage,
       syncAuthRequired,
+      syncLogoutPending,
       async connectSync(passcode) {
         const authResult = await connectCloudSync(passcode);
         if (!authResult.ok) {
@@ -315,6 +318,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setStorageMode("cloud");
         setSyncStatus(cloudResult.data ? "synced" : "idle");
         setSyncAuthRequired(false);
+        setSyncLogoutPending(false);
         setSyncMessage(
           cloudResult.data
             ? "クラウド同期を使っています。家族の端末でも同じデータを見られます。"
@@ -324,7 +328,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return true;
       },
       async disconnectSync() {
-        await disconnectCloudSync();
+        // Local saving must remain available even when revocation is offline.
+        setStorageMode("local");
+        const result = await disconnectCloudSync();
+        if (!result.ok) {
+          setSyncStatus("error");
+          setSyncAuthRequired(true);
+          setSyncLogoutPending(true);
+          setSaveError(result.message);
+          setSyncMessage("端末保存に切り替えました。ログアウトは未完了です。通信が戻ったら再試行してください。");
+          return;
+        }
+        setSyncLogoutPending(false);
+        setSaveError("");
         setStorageMode("local");
         setSyncStatus("idle");
         setSyncAuthRequired(true);
@@ -743,7 +759,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }));
       }
     }),
-    [data, isReady, saveError, storageMode, syncAuthRequired, syncMessage, syncStatus]
+    [data, isReady, saveError, storageMode, syncAuthRequired, syncLogoutPending, syncMessage, syncStatus]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

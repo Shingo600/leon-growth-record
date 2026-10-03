@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const settings = config();
-  const status = { enabled: settings.enabled, authenticated: authenticated(request), ready: false,
+  const status = { enabled: settings.enabled, authenticated: await authenticated(request), ready: false,
     storageReady: false, message: "", cacheScope: undefined as string | undefined };
   if (!status.authenticated) return json({ ...status, message: "家族の同期コードでおでかけ機能を利用できます。" });
   try {

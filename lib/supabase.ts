@@ -168,8 +168,10 @@ export async function connectCloudSync(passcode: string): Promise<CloudResult<nu
 }
 
 export async function disconnectCloudSync() {
-  await fetch(authEndpoint, {
+  const response = await fetch(authEndpoint, {
     method: "DELETE",
     credentials: "same-origin"
   }).catch(() => null);
+  if (!response?.ok) return { ok: false as const, message: response ? await parseMessage(response) : "ログアウトできませんでした。通信を確認してください。" };
+  return { ok: true as const };
 }

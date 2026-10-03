@@ -4,7 +4,7 @@ import { albumBucket, albumErrorMessage, getAlbumServer } from "@/lib/album/serv
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const server = getAlbumServer(request);
+  const server = await getAlbumServer(request);
   if (!server.ok) return NextResponse.json({ message: server.message }, { status: server.status });
   const id = new URL(request.url).searchParams.get("id");
   if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return NextResponse.json({ message: "写真を指定してください。" }, { status: 400 });

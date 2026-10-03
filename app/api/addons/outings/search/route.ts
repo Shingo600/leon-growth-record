@@ -6,7 +6,7 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
-    authorize(request, true);
+    await authorize(request, true);
     const settings = config();
     if (!settings.enabled || !settings.key) throw new OutingsError("AI検索はまだ利用できません。", 503);
     let input;
