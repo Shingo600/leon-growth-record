@@ -1,4 +1,4 @@
-const CACHE_NAME = "leon-growth-record-v15";
+const CACHE_NAME = "leon-growth-record-v16";
 const APP_SHELL = [
   "/",
   "/records",
@@ -9,9 +9,11 @@ const APP_SHELL = [
   "/profile",
   "/expenses",
   "/outings",
-  "/icon-192.svg",
-  "/icon-512.svg",
-  "/apple-touch-icon.svg"
+  "/icons/leon-20261014-32.png",
+  "/icons/leon-20261014-192.png",
+  "/icons/leon-20261014-512.png",
+  "/icons/leon-20261014-maskable-512.png",
+  "/icons/leon-20261014-apple-180.png"
 ];
 
 self.addEventListener("message", (event) => {
