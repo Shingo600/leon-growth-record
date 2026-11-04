@@ -1,5 +1,5 @@
 import type { AppData } from "@/lib/types";
-import { normalizeAppData, stripEmbeddedImagesForCloud } from "@/lib/storage";
+import { parseAppData, stripEmbeddedImagesForCloud } from "@/lib/storage";
 
 const snapshotEndpoint = "/api/snapshot";
 const authEndpoint = "/api/snapshot/auth";
@@ -98,11 +98,11 @@ export async function fetchCloudAppData(): Promise<CloudResult<AppData | null>> 
       };
     }
 
-    const body = (await response.json()) as { data: Partial<AppData> | null };
-    return {
-      ok: true,
-      data: body.data ? normalizeAppData(body.data) : null
-    };
+    const body = (await response.json().catch(() => null)) as { data?: unknown } | null;
+    if (body?.data === null) return { ok: true, data: null };
+    const data = parseAppData(body?.data);
+    if (!data) return { ok: false, code: "request-failed", message: "共有データを確認できません。保存済みデータは変更していません。" };
+    return { ok: true, data };
   });
 }
 

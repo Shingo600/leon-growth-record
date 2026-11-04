@@ -4,8 +4,8 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { useAppData } from "@/components/app-provider";
-import { sampleAppData } from "@/lib/dummy-data";
-import { createBackupData, parseBackupData } from "@/lib/storage";
+import { defaultAppData, sampleAppData } from "@/lib/dummy-data";
+import { createBackupData, MAX_BACKUP_BYTES, parseBackupData } from "@/lib/storage";
 
 function downloadTextFile(fileName: string, text: string) {
   const blob = new Blob([text], { type: "application/json" });
@@ -27,9 +27,19 @@ function readFileText(file: File) {
 }
 
 export function BackupManager() {
-  const { data, replaceData } = useAppData();
+  const { data, canReplaceLocalData, replaceLocalData } = useAppData();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  function applyLocalChange(next: typeof data, success: string) {
+    if (!replaceLocalData(next)) {
+      setMessage("");
+      setError("この端末だけの保存を確認できませんでした。同期状態と端末の保存設定を確認してください。");
+      return;
+    }
+    setError("");
+    setMessage(success);
+  }
 
   function handleExport() {
     const backup = createBackupData(data);
@@ -40,42 +50,21 @@ export function BackupManager() {
   }
 
   function handleSampleLoad() {
+    if (!canReplaceLocalData) return;
     if (!window.confirm("サンプルデータをこの端末に読み込みます。現在のデータは上書きされます。よろしいですか？")) {
       return;
     }
 
-    replaceData(sampleAppData);
-    setError("");
-    setMessage("サンプルデータを読み込みました。");
+    applyLocalChange(sampleAppData, "サンプルデータをこの端末に読み込みました。");
   }
 
   function handleReset() {
+    if (!canReplaceLocalData) return;
     if (!window.confirm("この端末のデータを空の状態に戻します。よろしいですか？")) {
       return;
     }
 
-    replaceData({
-      ...sampleAppData,
-      profile: {
-        ...sampleAppData.profile,
-        breed: "",
-        birthday: "",
-        arrivalDate: "",
-        currentWeight: 0,
-        targetWeight: 0,
-        photoUrl: "",
-        catchPhrase: "今日もやさしく見守ろう"
-      },
-      records: [],
-      events: [],
-      healthRecords: [],
-      activityRecords: [],
-      mealRecords: [],
-      foodItems: [],
-      expenseRecords: []
-    });
-    setError("");
-    setMessage("この端末のデータを初期化しました。");
+    applyLocalChange(defaultAppData, "この端末のデータを初期化しました。");
   }
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>) {
@@ -85,6 +74,12 @@ export function BackupManager() {
     }
 
     try {
+      if (!canReplaceLocalData) return;
+      if (file.size > MAX_BACKUP_BYTES) {
+        setMessage("");
+        setError("バックアップが大きすぎます（上限16MB）。");
+        return;
+      }
       const text = await readFileText(file);
       const parsed = parseBackupData(text);
 
@@ -94,14 +89,12 @@ export function BackupManager() {
         return;
       }
 
-      const confirmed = window.confirm("現在のデータをバックアップファイルの内容で上書きします。よろしいですか？");
+      const confirmed = window.confirm("この端末のデータをバックアップの内容で上書きします。家族の共有データは変更しません。よろしいですか？");
       if (!confirmed) {
         return;
       }
 
-      replaceData(parsed.data);
-      setError("");
-      setMessage("バックアップから復元しました。");
+      applyLocalChange(parsed.data, "この端末にバックアップを復元しました。");
     } catch {
       setMessage("");
       setError("バックアップファイルの読み込みに失敗しました。");
@@ -123,13 +116,19 @@ export function BackupManager() {
         <button type="button" className="button-primary w-full" onClick={handleExport}>
           バックアップを書き出す
         </button>
-        <button type="button" className="button-secondary w-full" onClick={handleSampleLoad}>
+        <button type="button" className="button-secondary w-full" disabled={!canReplaceLocalData} onClick={handleSampleLoad}>
           サンプルデータを入れる
         </button>
       </div>
 
       <p className="text-sm leading-6 text-ink/60">
-        このJSONには写真ファイル本体は含まれません。アルバムの写真は
+        {canReplaceLocalData
+          ? "初期化・サンプル読込・復元は端末だけに反映します。再接続前に、残したい端末データを書き出してください。"
+          : "共有記録を守るため、初期化・サンプル読込・復元は端末保存に切り替えてから行えます。"}
+      </p>
+
+      <p className="text-sm leading-6 text-ink/60">
+        このJSONには端末内の記録・プロフィール写真や画像URLが含まれる場合があります。アルバムの写真は
         <Link href="/album" className="font-semibold text-indigo-700 underline">アルバム</Link>
         で開き、「写真を保存」から別に手元へ残してください。
       </p>
@@ -147,6 +146,7 @@ export function BackupManager() {
           className="input file:mr-3 file:rounded-full file:border-0 file:bg-ink file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
           type="file"
           accept=".json,application/json"
+          disabled={!canReplaceLocalData}
           onChange={handleImport}
         />
         <p className="mt-2 text-xs leading-5 text-ink/55">
@@ -154,7 +154,7 @@ export function BackupManager() {
         </p>
       </div>
 
-      <button type="button" className="button-secondary w-full" onClick={handleReset}>
+      <button type="button" className="button-secondary w-full" disabled={!canReplaceLocalData} onClick={handleReset}>
         この端末のデータを初期化
       </button>
 

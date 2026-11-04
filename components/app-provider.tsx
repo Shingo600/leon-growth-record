@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentActivityMinutes } from "@/lib/activity";
 import { defaultAppData } from "@/lib/dummy-data";
-import { loadAppData, saveAppData } from "@/lib/storage";
+import { clearLocalOnlyData, hasLocalOnlyData, keepDataLocal, loadAppData, saveAppData } from "@/lib/storage";
 import { connectCloudSync, disconnectCloudSync, fetchCloudAppData, saveCloudAppData } from "@/lib/supabase";
 import {
   ActivityCategory,
@@ -56,7 +56,8 @@ type AppContextValue = {
   syncLogoutPending: boolean;
   connectSync: (passcode: string) => Promise<boolean>;
   disconnectSync: () => Promise<void>;
-  replaceData: (data: AppData) => void;
+  canReplaceLocalData: boolean;
+  replaceLocalData: (data: AppData) => boolean;
   updateProfile: (profile: DogProfile) => void;
   addRecord: (record: RecordInput) => void;
   updateRecord: (id: string, record: RecordInput) => void;
@@ -156,12 +157,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(getInitialData);
   const [isReady, setIsReady] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [storageMode, setStorageMode] = useState<StorageMode>("local");
+  const [storageMode, updateStorageMode] = useState<StorageMode>("local");
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncMessage, setSyncMessage] = useState("この端末に保存しています。");
   const [syncAuthRequired, setSyncAuthRequired] = useState(false);
   const [syncLogoutPending, setSyncLogoutPending] = useState(false);
+  const [syncTransitioning, setSyncTransitioning] = useState(false);
   const hasLoadedRef = useRef(false);
+  const modeRef = useRef<StorageMode>("local");
+  const transitionRef = useRef(false);
+  const localOnlyRef = useRef(false);
+  const reconnectBaselineRef = useRef<AppData | null>(null);
+
+  function setStorageMode(mode: StorageMode) {
+    modeRef.current = mode;
+    updateStorageMode(mode);
+  }
+
+  async function runSyncTransition<T>(task: () => Promise<T>, busy: T): Promise<T> {
+    if (!hasLoadedRef.current || transitionRef.current) return busy;
+    transitionRef.current = true;
+    setSyncTransitioning(true);
+    try {
+      return await task();
+    } finally {
+      transitionRef.current = false;
+      setSyncTransitioning(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -171,6 +194,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (localData && !cancelled) {
         setData(localData);
+      }
+
+      if (hasLocalOnlyData()) {
+        localOnlyRef.current = true;
+        setSyncAuthRequired(true);
+        setSyncMessage("この端末だけに保存しています。共有の記録を見るには再接続してください。");
+        hasLoadedRef.current = true;
+        setIsReady(true);
+        return;
       }
 
       setSyncStatus("syncing");
@@ -232,23 +264,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (storageMode === "local" && localOnlyRef.current && !keepDataLocal()) {
+      setSaveError("端末専用の保存設定を更新できませんでした。");
+      return;
+    }
     const localResult = saveAppData(data);
     if (storageMode === "local") {
       setSaveError(localResult.ok ? "" : localResult.message);
     } else if (localResult.ok) {
+      clearLocalOnlyData();
       setSaveError("");
     }
 
-    if (storageMode !== "cloud") {
+    if (storageMode !== "cloud" || data === reconnectBaselineRef.current) {
       return;
     }
+    reconnectBaselineRef.current = null;
 
     let cancelled = false;
 
     async function syncCloud() {
       setSyncStatus("syncing");
       const result = await saveCloudAppData(data);
-      if (cancelled) {
+      if (cancelled || modeRef.current !== "cloud") {
         return;
       }
 
@@ -286,7 +324,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       syncMessage,
       syncAuthRequired,
       syncLogoutPending,
-      async connectSync(passcode) {
+      canReplaceLocalData: isReady && storageMode === "local" && !syncTransitioning,
+      connectSync: (passcode) => runSyncTransition(async () => {
         const authResult = await connectCloudSync(passcode);
         if (!authResult.ok) {
           setStorageMode("local");
@@ -311,7 +350,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return false;
         }
 
-        if (cloudResult.data) {
+        if (localOnlyRef.current || hasLocalOnlyData()) {
+          // Reconnecting after local maintenance is read-only until the next edit.
+          const baseline = cloudResult.data ?? getInitialData();
+          reconnectBaselineRef.current = baseline;
+          setData(baseline);
+          localOnlyRef.current = false;
+        } else if (cloudResult.data) {
           setData((current) => (hasMeaningfulData(current) && !hasMeaningfulData(cloudResult.data!) ? current : cloudResult.data!));
         }
 
@@ -326,8 +371,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         setSaveError("");
         return true;
-      },
-      async disconnectSync() {
+      }, false),
+      disconnectSync: () => runSyncTransition(async () => {
         // Local saving must remain available even when revocation is offline.
         setStorageMode("local");
         const result = await disconnectCloudSync();
@@ -345,9 +390,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSyncStatus("idle");
         setSyncAuthRequired(true);
         setSyncMessage("この端末の保存に戻しました。再接続するには同期コードを入力してください。");
-      },
-      replaceData(nextData) {
+      }, undefined),
+      replaceLocalData(nextData) {
+        // Check the live mode; an import may have started before a connection changed.
+        if (!hasLoadedRef.current || modeRef.current !== "local" || transitionRef.current || !keepDataLocal()) return false;
+        localOnlyRef.current = true;
         setData(nextData);
+        return true;
       },
       updateProfile(profile) {
         setData((current) => ({
@@ -759,7 +808,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }));
       }
     }),
-    [data, isReady, saveError, storageMode, syncAuthRequired, syncLogoutPending, syncMessage, syncStatus]
+    [data, isReady, saveError, storageMode, syncAuthRequired, syncLogoutPending, syncMessage, syncStatus, syncTransitioning]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

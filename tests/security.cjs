@@ -23,6 +23,7 @@ let down = false;
 let failDelete = false;
 let authCalls = [];
 let dataCalls = 0;
+let snapshotRow = null;
 let converterCalls = 0;
 const sessions = new Map();
 const client = {
@@ -55,7 +56,7 @@ const client = {
     }
     dataCalls++;
     const chain = { select: () => chain, eq: () => chain, order: () => chain,
-      maybeSingle: async () => ({ data: null, error: null }),
+      maybeSingle: async () => ({ data: name === 'app_snapshots' ? snapshotRow : null, error: null }),
       limit: async () => ({ data: [], error: null }),
       range: async () => ({ data: [], count: 0, error: null }),
       upsert: async () => ({ error: null }) };
@@ -84,13 +85,74 @@ const search = require('../app/api/addons/outings/search/route.ts');
 const status = require('../app/api/addons/outings/status/route.ts');
 const converter = require('../app/api/convert-heic/route.ts');
 const cloud = require('../lib/supabase.ts');
+const { createBackupData, parseBackupData } = require('../lib/storage.ts');
+const { sampleAppData } = require('../lib/dummy-data.ts');
 function request(route = '/api/snapshot/auth', method = 'POST', token, payload = { passcode: 'synthetic-shared-code' }, origin = 'https://app.example') {
   return new Request('https://app.example' + route, { method, headers: {
     origin, 'content-type': 'application/json', cookie: token ? auth.syncCookieName + '=' + token : ''
   }, ...(method === 'GET' ? {} : { body: JSON.stringify(payload) }) });
 }
-function reset() { attempts = 0; windowStarted = now; authCalls = []; down = false; failDelete = false; dataCalls = 0; }
+function reset() { attempts = 0; windowStarted = now; authCalls = []; down = false; failDelete = false; dataCalls = 0; snapshotRow = null; }
 function cookie(response) { return response.headers.get('set-cookie').match(/leon-sync-session=([^;]+)/)[1]; }
+test('backup and authenticated snapshot PUT reject corrupt rows without writing', async () => {
+  reset();
+  const token = cookie(await login.POST(request()));
+  const valid = structuredClone(sampleAppData);
+  for (const invalid of [
+    { ...valid, expenseRecords: [null] },
+    { ...valid, records: [{ ...valid.records[0], taijyuu: '25' }] },
+    { ...valid, healthRecords: [{ ...valid.healthRecords[0], doctorNote: null }] },
+    { ...valid, profile: { ...valid.profile, photoUrl: 42 } },
+    { ...valid, records: [{ ...valid.records[0], date: '2026-02-30' }] },
+    { ...valid, profile: null }
+  ]) {
+    assert.equal(parseBackupData(JSON.stringify(createBackupData(invalid))).ok, false);
+    const response = await snapshot.PUT(request('/api/snapshot', 'PUT', token, invalid));
+    assert.equal(response.status, 400);
+  }
+  assert.equal(dataCalls, 0);
+  assert.equal((await snapshot.PUT(request('/api/snapshot', 'PUT', token, valid))).status, 200);
+  assert.equal(dataCalls, 1);
+});
+
+test('current backups and supported legacy omissions still round-trip', () => {
+  const valid = structuredClone(sampleAppData);
+  const restored = parseBackupData(JSON.stringify(createBackupData(valid)));
+  assert.equal(restored.ok, true);
+  assert.deepEqual(createBackupData(restored.data).data, restored.data);
+  delete valid.profile.targetWeight;
+  delete valid.profile.dailyGoals;
+  delete valid.records[0].photoUrl;
+  delete valid.events[0].reminderMinutes;
+  delete valid.dogCommands;
+  const legacy = parseBackupData(JSON.stringify(valid));
+  assert.equal(legacy.ok, true);
+  assert.equal(legacy.data.profile.targetWeight, valid.profile.currentWeight);
+  assert.ok(legacy.data.records.some(row => row.id === valid.records[0].id && row.photoUrl === ''));
+  assert.ok(legacy.data.events.some(row => row.id === valid.events[0].id && row.reminderMinutes === 0));
+});
+
+test('corrupt cloud data is not mistaken for an empty workspace', async () => {
+  reset();
+  const token = cookie(await login.POST(request()));
+  snapshotRow = { data: { ...sampleAppData, expenseRecords: [null] } };
+  const corrupt = await snapshot.GET(request('/api/snapshot', 'GET', token));
+  assert.equal(corrupt.status, 409);
+  assert.match(corrupt.headers.get('cache-control'), /no-store/);
+  const previousFetch = global.fetch;
+  try {
+    for (const response of [corrupt, Response.json({}), new Response('not JSON')]) {
+      global.fetch = async () => response;
+      assert.equal((await cloud.fetchCloudAppData()).ok, false);
+    }
+    snapshotRow = null;
+    global.fetch = async () => snapshot.GET(request('/api/snapshot', 'GET', token));
+    assert.deepEqual(await cloud.fetchCloudAppData(), { ok: true, data: null });
+  } finally {
+    global.fetch = previousFetch;
+    snapshotRow = null;
+  }
+});
 after(() => {
   global.fetch = originalFetch; Object.assign(global, savedGlobals);
   Module._load = originalLoad; Module._resolveFilename = originalResolve; process.env = env;

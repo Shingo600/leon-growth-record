@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { normalizeAppData } from "@/lib/storage";
-import type { AppData } from "@/lib/types";
+import { parseAppData } from "@/lib/storage";
 import { readServerSyncConfig, syncCookieName, verifySyncSessionToken } from "@/lib/sync-auth";
 
 const tableName = "app_snapshots";
@@ -73,11 +72,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: `Supabaseへの接続に失敗しました: ${message}` }, { status: 500 });
   }
 
-  if (!data?.data) {
-    return NextResponse.json({ data: null }, { status: 200 });
+  const headers = { "Cache-Control": "private, no-store" };
+  if (!data) {
+    return NextResponse.json({ data: null }, { headers });
   }
 
-  return NextResponse.json({ data: normalizeAppData(data.data as Partial<AppData>) }, { status: 200 });
+  const appData = parseAppData(data.data);
+  if (!appData) {
+    return NextResponse.json({ message: "共有データの形式が不正です。保存済みデータは変更していません。" }, { status: 409, headers });
+  }
+  return NextResponse.json({ data: appData }, { headers });
 }
 
 export async function PUT(request: Request) {
@@ -90,12 +94,11 @@ export async function PUT(request: Request) {
     return NextResponse.json({ message: "同期コードを入力してください。" }, { status: 401 });
   }
 
-  const payload = (await request.json().catch(() => null)) as Partial<AppData> | null;
-  if (!payload) {
-    return NextResponse.json({ message: "保存データを読み取れませんでした。" }, { status: 400 });
+  const appData = parseAppData(await request.json().catch(() => null), true);
+  if (!appData) {
+    return NextResponse.json({ message: "保存データの形式が不正です。共有データは変更していません。" }, { status: 400 });
   }
 
-  const appData = normalizeAppData(payload);
   let result;
   try {
     result = await server.client.from(tableName).upsert(
